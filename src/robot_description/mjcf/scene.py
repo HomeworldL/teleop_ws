@@ -23,8 +23,9 @@ RIGHT_ARM_QPOS = [0.0, 1.5708, -1.5708, -1.5708, 0.0, 0.0, 0.0]
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--camera", default="head_camera", help="MJCF camera name to render.")
-    parser.add_argument("--width", type=int, default=640, help="Rendered image width.")
-    parser.add_argument("--height", type=int, default=480, help="Rendered image height.")
+    parser.add_argument("--width", type=int, default=1920, help="Rendered image width.")
+    parser.add_argument("--height", type=int, default=1080, help="Rendered image height.")
+    parser.add_argument("--display-scale", type=float, default=0.5, help="OpenCV display scale.")
     parser.add_argument("--hz", type=float, default=30.0, help="Target visualization rate.")
     parser.add_argument(
         "--frames",
@@ -62,6 +63,8 @@ def main() -> None:
     args = parse_args()
     if args.hz <= 0:
         raise ValueError("--hz must be positive")
+    if args.display_scale <= 0:
+        raise ValueError("--display-scale must be positive")
 
     model = mujoco.MjModel.from_xml_path(str(SCENE_PATH))
     data = mujoco.MjData(model)
@@ -96,7 +99,14 @@ def main() -> None:
             bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
 
             if not args.no_display:
-                cv2.imshow(args.camera, bgr)
+                display_image = cv2.resize(
+                    bgr,
+                    None,
+                    fx=args.display_scale,
+                    fy=args.display_scale,
+                    interpolation=cv2.INTER_AREA,
+                )
+                cv2.imshow(args.camera, display_image)
                 key = cv2.waitKey(1) & 0xFF
                 if key in (27, ord("q")):
                     break

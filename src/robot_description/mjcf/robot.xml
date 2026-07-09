@@ -84,8 +84,8 @@
   <worldbody>
     <body name="main_base_link" pos="0 0 0.7">
       <inertial pos="0 0 0" mass="0.001" diaginertia="1e-6 1e-6 1e-6" />
-      <body name="head_camera" pos="0 0 0.8" quat="-0.608159 -0.360753 0.360756 0.608157">
-        <camera name="head_camera" mode="fixed" resolution="640 480" fovy="90" />
+      <body name="head_camera" pos="0 0 0.8" quat="-0.674380 -0.212629 0.212633 0.674379">
+        <camera name="head_camera" mode="fixed" resolution="1920 1080" fovy="42.5" />
         <body name="head_camera_optical_frame" quat="0 1 0 0">
           <site name="head_camera_optical_frame" size="0.01" />
         </body>
