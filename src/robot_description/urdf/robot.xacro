@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<robot name="robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="marvin_left.xacro" />
+  <xacro:include filename="marvin_right.xacro" />
+  <xacro:include filename="wuji_left.xacro" />
+  <xacro:include filename="wuji_right.xacro" />
+
+  <xacro:arg name="left_arm_xyz" default="0 0.2 0.5" />
+  <xacro:arg name="left_arm_rpy" default="-1.5708 -1.5708 0" />
+  <xacro:arg name="right_arm_xyz" default="0 -0.2 0.5" />
+  <xacro:arg name="right_arm_rpy" default="1.5708 -1.5708 0" />
+  <xacro:arg name="left_hand_xyz" default="0 -0.12 0" />
+  <xacro:arg name="left_hand_rpy" default="1.5708 3.1416 0" />
+  <xacro:arg name="right_hand_xyz" default="0 -0.12 0" />
+  <xacro:arg name="right_hand_rpy" default="1.5708 0 0" />
+
+  <link name="main_base_link" />
+
+  <xacro:marvin_left />
+  <xacro:marvin_right />
+  <xacro:wuji_left />
+  <xacro:wuji_right />
+
+  <joint name="main_base_to_marvin_left" type="fixed">
+    <origin xyz="$(arg left_arm_xyz)" rpy="$(arg left_arm_rpy)" />
+    <parent link="main_base_link" />
+    <child link="Base_L" />
+  </joint>
+
+  <joint name="main_base_to_marvin_right" type="fixed">
+    <origin xyz="$(arg right_arm_xyz)" rpy="$(arg right_arm_rpy)" />
+    <parent link="main_base_link" />
+    <child link="Base_R" />
+  </joint>
+
+  <joint name="marvin_left_to_wuji_left" type="fixed">
+    <origin xyz="$(arg left_hand_xyz)" rpy="$(arg left_hand_rpy)" />
+    <parent link="Link7_L" />
+    <child link="left_palm_link" />
+  </joint>
+
+  <joint name="marvin_right_to_wuji_right" type="fixed">
+    <origin xyz="$(arg right_hand_xyz)" rpy="$(arg right_hand_rpy)" />
+    <parent link="Link7_R" />
+    <child link="right_palm_link" />
+  </joint>
+</robot>

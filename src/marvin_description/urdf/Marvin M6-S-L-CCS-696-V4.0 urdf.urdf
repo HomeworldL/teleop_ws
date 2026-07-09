@@ -26,7 +26,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Base_L.STL" />
+          filename="package://marvin_description/meshes/left/Base_L.STL" />
       </geometry>
       <material
         name="">
@@ -40,7 +40,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Base_L.STL" />
+          filename="package://marvin_description/meshes/left/Base_L.STL" />
       </geometry>
     </collision>
   </link>
@@ -66,7 +66,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link1_L.STL" />
+          filename="package://marvin_description/meshes/left/Link1_L.STL" />
       </geometry>
       <material
         name="">
@@ -80,7 +80,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link1_L.STL" />
+          filename="package://marvin_description/meshes/left/Link1_L.STL" />
       </geometry>
     </collision>
   </link>
@@ -124,7 +124,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link2_L.STL" />
+          filename="package://marvin_description/meshes/left/Link2_L.STL" />
       </geometry>
       <material
         name="">
@@ -138,7 +138,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link2_L.STL" />
+          filename="package://marvin_description/meshes/left/Link2_L.STL" />
       </geometry>
     </collision>
   </link>
@@ -182,7 +182,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link3_L.STL" />
+          filename="package://marvin_description/meshes/left/Link3_L.STL" />
       </geometry>
       <material
         name="">
@@ -196,7 +196,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link3_L.STL" />
+          filename="package://marvin_description/meshes/left/Link3_L.STL" />
       </geometry>
     </collision>
   </link>
@@ -240,7 +240,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link4_L.STL" />
+          filename="package://marvin_description/meshes/left/Link4_L.STL" />
       </geometry>
       <material
         name="">
@@ -254,7 +254,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link4_L.STL" />
+          filename="package://marvin_description/meshes/left/Link4_L.STL" />
       </geometry>
     </collision>
   </link>
@@ -298,7 +298,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link5_L.STL" />
+          filename="package://marvin_description/meshes/left/Link5_L.STL" />
       </geometry>
       <material
         name="">
@@ -312,7 +312,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link5_L.STL" />
+          filename="package://marvin_description/meshes/left/Link5_L.STL" />
       </geometry>
     </collision>
   </link>
@@ -356,7 +356,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link6_L.STL" />
+          filename="package://marvin_description/meshes/left/Link6_L.STL" />
       </geometry>
       <material
         name="">
@@ -370,7 +370,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link6_L.STL" />
+          filename="package://marvin_description/meshes/left/Link6_L.STL" />
       </geometry>
     </collision>
   </link>
@@ -414,7 +414,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link7_L.STL" />
+          filename="package://marvin_description/meshes/left/Link7_L.STL" />
       </geometry>
       <material
         name="">
@@ -428,7 +428,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://marvin_description/meshes/Link7_L.STL" />
+          filename="package://marvin_description/meshes/left/Link7_L.STL" />
       </geometry>
     </collision>
   </link>

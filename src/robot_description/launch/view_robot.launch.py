@@ -30,7 +30,7 @@ from launch_ros.substitutions import FindPackageShare
 
 def launch_setup(context, *args, **kwargs):
     rviz_config_file = PathJoinSubstitution(
-        [FindPackageShare("labubu2_description"), "rviz", "view_robot.rviz"]
+        [FindPackageShare("robot_description"), "rviz", "view_robot.rviz"]
     )
 
     robot_description_content = Command(
@@ -38,7 +38,7 @@ def launch_setup(context, *args, **kwargs):
             PathJoinSubstitution([FindExecutable(name="xacro")]),
             " ",
             PathJoinSubstitution(
-                [FindPackageShare("labubu2_description"), "urdf", "main.xacro"]
+                [FindPackageShare("robot_description"), "urdf", "robot.xacro"]
             ),
         ]
     )
@@ -46,9 +46,9 @@ def launch_setup(context, *args, **kwargs):
 
     robot_gen_urdf_file = PathJoinSubstitution(
         [
-            FindPackageShare("labubu2_description"),
+            FindPackageShare("robot_description"),
             "urdf",
-            "main.xacro.urdf",
+            "robot.xacro.urdf",
         ]
     )
 
