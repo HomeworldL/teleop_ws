@@ -18,8 +18,8 @@
   <xacro:arg name="left_camera_adapter_rpy" default="0.785398 0 -1.5708" />
   <xacro:arg name="right_camera_adapter_xyz" default="0 -0.1 0" />
   <xacro:arg name="right_camera_adapter_rpy" default="-0.785398 0 -1.5708" />
-  <xacro:arg name="head_camera_xyz" default="0.35 0.0070867 ${1.0124+0.3}" />
-  <xacro:arg name="head_camera_rpy" default="0 0.959931 0" />
+  <xacro:arg name="head_camera_xyz" default="0.30 0.0070867 1.4" />
+  <xacro:arg name="head_camera_rpy" default="0 1.047198 0" />
   <xacro:arg name="left_wrist_camera_xyz" default="0.01137 0.00 0.0885" />
   <xacro:arg name="left_wrist_camera_rpy" default="0 0.785398 0" />
   <xacro:arg name="right_wrist_camera_xyz" default="0.01137 0.0 0.0885" />

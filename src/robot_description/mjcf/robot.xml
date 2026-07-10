@@ -575,7 +575,7 @@
           </body>
         </body>
       </body>
-      <body name="head_camera_bottom_screw_frame" pos="0.35 0.0070867 1.3124" quat="0.887011 0 0.461749 0">
+      <body name="head_camera_bottom_screw_frame" pos="0.30 0.0070867 1.4" quat="0.866025 0 0.5 0">
         <body name="head_camera_link" pos="0.0106 0.0175 0.0125">
           <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="0.072" diaginertia="0.00388124 0.00387926 0.00049894" />
           <geom size="0.012525 0.045 0.0125" pos="0 -0.0175 0" type="box" />
