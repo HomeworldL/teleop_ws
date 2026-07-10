@@ -9,7 +9,7 @@ Panels:
         - /RobotModel1
         - /TF1
         - /TF1/Frames1
-      Splitter Ratio: 0.5
+      Splitter Ratio: 0.6988189220428467
     Tree Height: 719
   - Class: rviz_common/Selection
     Name: Selection
@@ -153,6 +153,68 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        head_camera_accel_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_accel_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_bottom_screw_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_color_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_color_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_depth_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_depth_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_gyro_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_gyro_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_infra1_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_infra1_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_infra2_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_infra2_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_camera_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_camera_adapter_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         left_finger1_link1:
           Alpha: 1
           Show Axes: false
@@ -283,7 +345,69 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        left_hand_docking_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         left_palm_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_wrist_camera_accel_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_accel_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_bottom_screw_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_color_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_color_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_depth_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_depth_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_gyro_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_gyro_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_infra1_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_infra1_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_infra2_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_infra2_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_wrist_camera_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -292,6 +416,12 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
+        right_camera_adapter_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         right_finger1_link1:
           Alpha: 1
           Show Axes: false
@@ -422,7 +552,69 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        right_hand_docking_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         right_palm_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_wrist_camera_accel_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_accel_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_bottom_screw_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_color_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_color_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_depth_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_depth_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_gyro_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_gyro_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_infra1_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_infra1_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_infra2_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_infra2_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_wrist_camera_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -441,7 +633,7 @@ Visualization Manager:
       Frames:
         All Enabled: false
         Base_L:
-          Value: true
+          Value: false
         Base_R:
           Value: false
         Link1_L:
@@ -473,7 +665,37 @@ Visualization Manager:
         Link7_R:
           Value: false
         base_link:
-          Value: true
+          Value: false
+        head_camera_accel_frame:
+          Value: false
+        head_camera_accel_optical_frame:
+          Value: false
+        head_camera_bottom_screw_frame:
+          Value: false
+        head_camera_color_frame:
+          Value: false
+        head_camera_color_optical_frame:
+          Value: false
+        head_camera_depth_frame:
+          Value: false
+        head_camera_depth_optical_frame:
+          Value: false
+        head_camera_gyro_frame:
+          Value: false
+        head_camera_gyro_optical_frame:
+          Value: false
+        head_camera_infra1_frame:
+          Value: false
+        head_camera_infra1_optical_frame:
+          Value: false
+        head_camera_infra2_frame:
+          Value: false
+        head_camera_infra2_optical_frame:
+          Value: false
+        head_camera_link:
+          Value: false
+        left_camera_adapter_link:
+          Value: false
         left_finger1_link1:
           Value: false
         left_finger1_link2:
@@ -526,9 +748,41 @@ Visualization Manager:
           Value: false
         left_finger5_tip_link:
           Value: false
+        left_hand_docking_link:
+          Value: false
         left_palm_link:
-          Value: true
+          Value: false
+        left_wrist_camera_accel_frame:
+          Value: false
+        left_wrist_camera_accel_optical_frame:
+          Value: false
+        left_wrist_camera_bottom_screw_frame:
+          Value: false
+        left_wrist_camera_color_frame:
+          Value: false
+        left_wrist_camera_color_optical_frame:
+          Value: false
+        left_wrist_camera_depth_frame:
+          Value: false
+        left_wrist_camera_depth_optical_frame:
+          Value: false
+        left_wrist_camera_gyro_frame:
+          Value: false
+        left_wrist_camera_gyro_optical_frame:
+          Value: false
+        left_wrist_camera_infra1_frame:
+          Value: false
+        left_wrist_camera_infra1_optical_frame:
+          Value: false
+        left_wrist_camera_infra2_frame:
+          Value: false
+        left_wrist_camera_infra2_optical_frame:
+          Value: false
+        left_wrist_camera_link:
+          Value: false
         lift_platform_link:
+          Value: false
+        right_camera_adapter_link:
           Value: true
         right_finger1_link1:
           Value: false
@@ -582,8 +836,38 @@ Visualization Manager:
           Value: false
         right_finger5_tip_link:
           Value: false
+        right_hand_docking_link:
+          Value: false
         right_palm_link:
+          Value: false
+        right_wrist_camera_accel_frame:
+          Value: false
+        right_wrist_camera_accel_optical_frame:
+          Value: false
+        right_wrist_camera_bottom_screw_frame:
           Value: true
+        right_wrist_camera_color_frame:
+          Value: false
+        right_wrist_camera_color_optical_frame:
+          Value: true
+        right_wrist_camera_depth_frame:
+          Value: false
+        right_wrist_camera_depth_optical_frame:
+          Value: false
+        right_wrist_camera_gyro_frame:
+          Value: false
+        right_wrist_camera_gyro_optical_frame:
+          Value: false
+        right_wrist_camera_infra1_frame:
+          Value: false
+        right_wrist_camera_infra1_optical_frame:
+          Value: false
+        right_wrist_camera_infra2_frame:
+          Value: false
+        right_wrist_camera_infra2_optical_frame:
+          Value: false
+        right_wrist_camera_link:
+          Value: false
       Marker Scale: 0.30000001192092896
       Name: TF
       Show Arrows: true
@@ -591,6 +875,26 @@ Visualization Manager:
       Show Names: false
       Tree:
         base_link:
+          head_camera_bottom_screw_frame:
+            head_camera_link:
+              head_camera_accel_frame:
+                head_camera_accel_optical_frame:
+                  {}
+              head_camera_color_frame:
+                head_camera_color_optical_frame:
+                  {}
+              head_camera_depth_frame:
+                head_camera_depth_optical_frame:
+                  {}
+              head_camera_gyro_frame:
+                head_camera_gyro_optical_frame:
+                  {}
+              head_camera_infra1_frame:
+                head_camera_infra1_optical_frame:
+                  {}
+              head_camera_infra2_frame:
+                head_camera_infra2_optical_frame:
+                  {}
           lift_platform_link:
             Base_L:
               Link1_L:
@@ -600,39 +904,61 @@ Visualization Manager:
                       Link5_L:
                         Link6_L:
                           Link7_L:
-                            left_palm_link:
-                              left_finger1_link1:
-                                left_finger1_link2:
-                                  left_finger1_link2_softbody:
-                                    {}
-                                  left_finger1_link3:
-                                    left_finger1_link4:
-                                      left_finger1_tip_link:
-                                        {}
-                              left_finger2_link1:
-                                left_finger2_link2:
-                                  left_finger2_link3:
-                                    left_finger2_link4:
-                                      left_finger2_tip_link:
-                                        {}
-                              left_finger3_link1:
-                                left_finger3_link2:
-                                  left_finger3_link3:
-                                    left_finger3_link4:
-                                      left_finger3_tip_link:
-                                        {}
-                              left_finger4_link1:
-                                left_finger4_link2:
-                                  left_finger4_link3:
-                                    left_finger4_link4:
-                                      left_finger4_tip_link:
-                                        {}
-                              left_finger5_link1:
-                                left_finger5_link2:
-                                  left_finger5_link3:
-                                    left_finger5_link4:
-                                      left_finger5_tip_link:
-                                        {}
+                            left_camera_adapter_link:
+                              left_wrist_camera_bottom_screw_frame:
+                                left_wrist_camera_link:
+                                  left_wrist_camera_accel_frame:
+                                    left_wrist_camera_accel_optical_frame:
+                                      {}
+                                  left_wrist_camera_color_frame:
+                                    left_wrist_camera_color_optical_frame:
+                                      {}
+                                  left_wrist_camera_depth_frame:
+                                    left_wrist_camera_depth_optical_frame:
+                                      {}
+                                  left_wrist_camera_gyro_frame:
+                                    left_wrist_camera_gyro_optical_frame:
+                                      {}
+                                  left_wrist_camera_infra1_frame:
+                                    left_wrist_camera_infra1_optical_frame:
+                                      {}
+                                  left_wrist_camera_infra2_frame:
+                                    left_wrist_camera_infra2_optical_frame:
+                                      {}
+                            left_hand_docking_link:
+                              left_palm_link:
+                                left_finger1_link1:
+                                  left_finger1_link2:
+                                    left_finger1_link2_softbody:
+                                      {}
+                                    left_finger1_link3:
+                                      left_finger1_link4:
+                                        left_finger1_tip_link:
+                                          {}
+                                left_finger2_link1:
+                                  left_finger2_link2:
+                                    left_finger2_link3:
+                                      left_finger2_link4:
+                                        left_finger2_tip_link:
+                                          {}
+                                left_finger3_link1:
+                                  left_finger3_link2:
+                                    left_finger3_link3:
+                                      left_finger3_link4:
+                                        left_finger3_tip_link:
+                                          {}
+                                left_finger4_link1:
+                                  left_finger4_link2:
+                                    left_finger4_link3:
+                                      left_finger4_link4:
+                                        left_finger4_tip_link:
+                                          {}
+                                left_finger5_link1:
+                                  left_finger5_link2:
+                                    left_finger5_link3:
+                                      left_finger5_link4:
+                                        left_finger5_tip_link:
+                                          {}
             Base_R:
               Link1_R:
                 Link2_R:
@@ -641,39 +967,61 @@ Visualization Manager:
                       Link5_R:
                         Link6_R:
                           Link7_R:
-                            right_palm_link:
-                              right_finger1_link1:
-                                right_finger1_link2:
-                                  right_finger1_link2_softbody:
-                                    {}
-                                  right_finger1_link3:
-                                    right_finger1_link4:
-                                      right_finger1_tip_link:
-                                        {}
-                              right_finger2_link1:
-                                right_finger2_link2:
-                                  right_finger2_link3:
-                                    right_finger2_link4:
-                                      right_finger2_tip_link:
-                                        {}
-                              right_finger3_link1:
-                                right_finger3_link2:
-                                  right_finger3_link3:
-                                    right_finger3_link4:
-                                      right_finger3_tip_link:
-                                        {}
-                              right_finger4_link1:
-                                right_finger4_link2:
-                                  right_finger4_link3:
-                                    right_finger4_link4:
-                                      right_finger4_tip_link:
-                                        {}
-                              right_finger5_link1:
-                                right_finger5_link2:
-                                  right_finger5_link3:
-                                    right_finger5_link4:
-                                      right_finger5_tip_link:
-                                        {}
+                            right_camera_adapter_link:
+                              right_wrist_camera_bottom_screw_frame:
+                                right_wrist_camera_link:
+                                  right_wrist_camera_accel_frame:
+                                    right_wrist_camera_accel_optical_frame:
+                                      {}
+                                  right_wrist_camera_color_frame:
+                                    right_wrist_camera_color_optical_frame:
+                                      {}
+                                  right_wrist_camera_depth_frame:
+                                    right_wrist_camera_depth_optical_frame:
+                                      {}
+                                  right_wrist_camera_gyro_frame:
+                                    right_wrist_camera_gyro_optical_frame:
+                                      {}
+                                  right_wrist_camera_infra1_frame:
+                                    right_wrist_camera_infra1_optical_frame:
+                                      {}
+                                  right_wrist_camera_infra2_frame:
+                                    right_wrist_camera_infra2_optical_frame:
+                                      {}
+                            right_hand_docking_link:
+                              right_palm_link:
+                                right_finger1_link1:
+                                  right_finger1_link2:
+                                    right_finger1_link2_softbody:
+                                      {}
+                                    right_finger1_link3:
+                                      right_finger1_link4:
+                                        right_finger1_tip_link:
+                                          {}
+                                right_finger2_link1:
+                                  right_finger2_link2:
+                                    right_finger2_link3:
+                                      right_finger2_link4:
+                                        right_finger2_tip_link:
+                                          {}
+                                right_finger3_link1:
+                                  right_finger3_link2:
+                                    right_finger3_link3:
+                                      right_finger3_link4:
+                                        right_finger3_tip_link:
+                                          {}
+                                right_finger4_link1:
+                                  right_finger4_link2:
+                                    right_finger4_link3:
+                                      right_finger4_link4:
+                                        right_finger4_tip_link:
+                                          {}
+                                right_finger5_link1:
+                                  right_finger5_link2:
+                                    right_finger5_link3:
+                                      right_finger5_link4:
+                                        right_finger5_tip_link:
+                                          {}
       Update Interval: 0
       Value: true
   Enabled: true
@@ -722,25 +1070,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 3.145686388015747
+      Distance: 2.8629074096679688
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.01873045228421688
-        Y: -0.01488986425101757
-        Z: 0.897045910358429
+        X: 0.5751805305480957
+        Y: 0.03836017847061157
+        Z: 0.8422543406486511
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.38479670882225037
+      Pitch: 0.2897973656654358
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.07358963042497635
+      Yaw: 0.06860202550888062
     Saved: ~
 Window Geometry:
   Displays:
