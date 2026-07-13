@@ -17,8 +17,8 @@ SCENE_PATH = SCRIPT_DIR / "scene.xml"
 DEFAULT_CAMERAS = ["head_camera", "left_wrist_camera", "right_wrist_camera"]
 LEFT_ARM_JOINTS = [f"Joint{i}_L" for i in range(1, 8)]
 RIGHT_ARM_JOINTS = [f"Joint{i}_R" for i in range(1, 8)]
-LEFT_ARM_QPOS = [0.0, 1.5708, 1.5708, -1.5708, 0.0, 0.0, 0.0]
-RIGHT_ARM_QPOS = [0.0, 1.5708, -1.5708, -1.5708, 0.0, 0.0, 0.0]
+LEFT_ARM_QPOS = [-1.5708, 1.5708, 1.5708, -1.5708, 0.0, 0.0, 0.0]
+RIGHT_ARM_QPOS = [1.5708, 1.5708, -1.5708, -1.5708, 0.0, 0.0, 0.0]
 
 
 def parse_args() -> argparse.Namespace:

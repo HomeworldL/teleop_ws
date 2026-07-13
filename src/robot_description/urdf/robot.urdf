@@ -34,9 +34,9 @@
   </link>
   <link name="lift_platform_link">
     <inertial>
-      <origin rpy="0 0 0" xyz="-0.00393440285367647 0 0.0650000000000001"/>
-      <mass value="2.19054926095671"/>
-      <inertia ixx="0.00717540506836814" ixy="5.23623212722548E-19" ixz="4.34336481625962E-18" iyy="0.0104604851986703" iyz="1.22449606321944E-18" izz="0.0101784648626855"/>
+      <origin rpy="0 0 0" xyz="0.00304061511493919 0 0.0650000000000002"/>
+      <mass value="2.05736282450439"/>
+      <inertia ixx="0.00557455728848934" ixy="-5.98328104491412E-19" ixz="-8.52857618622784E-18" iyy="0.00984728397591123" iyz="3.66863177774555E-21" izz="0.00828511749726334"/>
     </inertial>
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -55,7 +55,7 @@
     </collision>
   </link>
   <joint name="base_to_lift_platform" type="fixed">
-    <origin rpy="0 0 0" xyz="0.2958 0.0070867 1.0124"/>
+    <origin rpy="0 0 0" xyz="0.29899 8.6662E-05 1.0124"/>
     <parent link="base_link"/>
     <child link="lift_platform_link"/>
   </joint>
@@ -2138,12 +2138,12 @@
     </collision>
   </link>
   <joint name="main_base_to_marvin_left" type="fixed">
-    <origin rpy="-1.5708 -1.5708 0" xyz="0.0252 0.04725 0.065"/>
+    <origin rpy="-1.5708 0 0" xyz="0.02201 0.03725 0.065"/>
     <parent link="lift_platform_link"/>
     <child link="Base_L"/>
   </joint>
   <joint name="main_base_to_marvin_right" type="fixed">
-    <origin rpy="1.5708 -1.5708 0" xyz="0.0252 -0.04725 0.065"/>
+    <origin rpy="1.5708 0 0" xyz="0.02201 -0.03725 0.065"/>
     <parent link="lift_platform_link"/>
     <child link="Base_R"/>
   </joint>
