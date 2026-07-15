@@ -60,6 +60,11 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+install(PROGRAMS
+  scripts/marvin_joint_control_ui.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 install(FILES ${MARVIN_SDK_LIBRARY}
   DESTINATION lib
 )

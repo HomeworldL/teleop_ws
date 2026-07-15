@@ -348,9 +348,16 @@ private:
   {
     if (control_mode_ == "position") {
       if (!SetJointMode(arm.sdk_arm, velocity_ratio_, acceleration_ratio_)) {
-        RCLCPP_ERROR(this->get_logger(), "Failed to set %s arm to position mode.", arm.side.c_str());
+        RCLCPP_ERROR(
+          this->get_logger(),
+          "Failed to set %s arm to position mode with velocity_ratio=%d acceleration_ratio=%d.",
+          arm.side.c_str(), velocity_ratio_, acceleration_ratio_);
         return false;
       }
+      RCLCPP_INFO(
+        this->get_logger(),
+        "Configured %s arm position mode with velocity_ratio=%d acceleration_ratio=%d.",
+        arm.side.c_str(), velocity_ratio_, acceleration_ratio_);
       sdk_call_spacing();
       return true;
     }
@@ -366,9 +373,15 @@ private:
         joint_impedance_k_.data(), joint_impedance_d_.data()))
     {
       RCLCPP_ERROR(
-        this->get_logger(), "Failed to set %s arm to joint impedance mode.", arm.side.c_str());
+        this->get_logger(),
+        "Failed to set %s arm to joint impedance mode with velocity_ratio=%d acceleration_ratio=%d.",
+        arm.side.c_str(), velocity_ratio_, acceleration_ratio_);
       return false;
     }
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Configured %s arm joint impedance mode with velocity_ratio=%d acceleration_ratio=%d.",
+      arm.side.c_str(), velocity_ratio_, acceleration_ratio_);
     sdk_call_spacing();
     return true;
   }
