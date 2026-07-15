@@ -3,6 +3,8 @@ logs/
 build/
 bin/
 lib/
+!src/marvin_ros2/marvin_driver/vendor/contrlSDK/lib/
+!src/marvin_ros2/marvin_driver/vendor/contrlSDK/lib/libMarvinSDK.so
 msg_gen/
 srv_gen/
 msg/*Action.msg
@@ -35,6 +37,7 @@ CMakeLists.txt.user
 srv/_*.py
 *.pcd
 *.pyc
+__pycache__/
 qtcreator-*
 *.user
 
