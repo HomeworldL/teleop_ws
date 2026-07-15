@@ -28,6 +28,11 @@ constexpr double kPi = 3.14159265358979323846;
 constexpr double kDegToRad = kPi / 180.0;
 constexpr double kRadToDeg = 180.0 / kPi;
 constexpr auto kSdkCallSpacing = std::chrono::milliseconds(2);
+constexpr auto kModeStepSpacing = std::chrono::milliseconds(200);
+constexpr long kModeResponseTimeoutMs = 1000;
+constexpr int kPositionState = 1;
+constexpr int kTorqueState = 3;
+constexpr int kJointImpedanceType = 1;
 
 std::string to_lower(std::string value)
 {
@@ -347,7 +352,7 @@ private:
   bool configure_arm_mode(ArmRuntime & arm)
   {
     if (control_mode_ == "position") {
-      if (!SetJointMode(arm.sdk_arm, velocity_ratio_, acceleration_ratio_)) {
+      if (!configure_position_mode(arm)) {
         RCLCPP_ERROR(
           this->get_logger(),
           "Failed to set %s arm to position mode with velocity_ratio=%d acceleration_ratio=%d.",
@@ -368,10 +373,7 @@ private:
       return false;
     }
 
-    if (!SetImpJointMode(
-        arm.sdk_arm, velocity_ratio_, acceleration_ratio_,
-        joint_impedance_k_.data(), joint_impedance_d_.data()))
-    {
+    if (!configure_joint_impedance_mode(arm)) {
       RCLCPP_ERROR(
         this->get_logger(),
         "Failed to set %s arm to joint impedance mode with velocity_ratio=%d acceleration_ratio=%d.",
@@ -384,6 +386,124 @@ private:
       arm.side.c_str(), velocity_ratio_, acceleration_ratio_);
     sdk_call_spacing();
     return true;
+  }
+
+  bool configure_position_mode(const ArmRuntime & arm)
+  {
+    if (!OnClearSet()) {
+      RCLCPP_ERROR(this->get_logger(), "OnClearSet failed before setting %s arm velocity/acceleration.", arm.side.c_str());
+      return false;
+    }
+    if (!queue_joint_limit(arm)) {
+      return false;
+    }
+    if (!send_queued_sdk_set("joint velocity/acceleration limit", arm)) {
+      return false;
+    }
+
+    std::this_thread::sleep_for(kModeStepSpacing);
+
+    if (!OnClearSet()) {
+      RCLCPP_ERROR(this->get_logger(), "OnClearSet failed before setting %s arm state.", arm.side.c_str());
+      return false;
+    }
+    if (!queue_target_state(arm, kPositionState)) {
+      return false;
+    }
+    if (!send_queued_sdk_set("position mode state", arm)) {
+      return false;
+    }
+    log_controller_joint_limit(arm);
+    return true;
+  }
+
+  bool configure_joint_impedance_mode(const ArmRuntime & arm)
+  {
+    if (!OnClearSet()) {
+      RCLCPP_ERROR(this->get_logger(), "OnClearSet failed before setting %s arm impedance mode.", arm.side.c_str());
+      return false;
+    }
+    if (!queue_joint_limit(arm)) {
+      return false;
+    }
+    if (!queue_joint_kd(arm)) {
+      return false;
+    }
+    if (!queue_target_state(arm, kTorqueState)) {
+      return false;
+    }
+    if (!queue_impedance_type(arm, kJointImpedanceType)) {
+      return false;
+    }
+    if (!send_queued_sdk_set("joint impedance mode", arm)) {
+      return false;
+    }
+    log_controller_joint_limit(arm);
+    return true;
+  }
+
+  bool queue_joint_limit(const ArmRuntime & arm)
+  {
+    if (arm.sdk_arm == 'A') {
+      return OnSetJointLmt_A(velocity_ratio_, acceleration_ratio_);
+    }
+    return OnSetJointLmt_B(velocity_ratio_, acceleration_ratio_);
+  }
+
+  bool queue_target_state(const ArmRuntime & arm, const int state)
+  {
+    if (arm.sdk_arm == 'A') {
+      return OnSetTargetState_A(state);
+    }
+    return OnSetTargetState_B(state);
+  }
+
+  bool queue_joint_kd(const ArmRuntime & arm)
+  {
+    if (arm.sdk_arm == 'A') {
+      return OnSetJointKD_A(joint_impedance_k_.data(), joint_impedance_d_.data());
+    }
+    return OnSetJointKD_B(joint_impedance_k_.data(), joint_impedance_d_.data());
+  }
+
+  bool queue_impedance_type(const ArmRuntime & arm, const int type)
+  {
+    if (arm.sdk_arm == 'A') {
+      return OnSetImpType_A(type);
+    }
+    return OnSetImpType_B(type);
+  }
+
+  bool send_queued_sdk_set(const char * action, const ArmRuntime & arm)
+  {
+    const auto delay = OnSetSendWaitResponse(kModeResponseTimeoutMs);
+    sdk_call_spacing();
+    if (delay < 0) {
+      RCLCPP_ERROR(
+        this->get_logger(), "Timed out sending %s for %s arm after %ld ms.",
+        action, arm.side.c_str(), kModeResponseTimeoutMs);
+      return false;
+    }
+    RCLCPP_INFO(
+      this->get_logger(), "Sent %s for %s arm; response delay=%ld ms.",
+      action, arm.side.c_str(), delay);
+    return true;
+  }
+
+  void log_controller_joint_limit(const ArmRuntime & arm)
+  {
+    DCSS dcss{};
+    if (!OnGetBuf(&dcss)) {
+      RCLCPP_WARN(this->get_logger(), "Could not read controller joint limits for %s arm.", arm.side.c_str());
+      return;
+    }
+
+    const auto & input = dcss.m_In[arm.sdk_index];
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Controller reports %s arm velocity_ratio=%d acceleration_ratio=%d state=%d.",
+      arm.side.c_str(), static_cast<int>(input.m_Joint_Vel_Ratio),
+      static_cast<int>(input.m_Joint_Acc_Ratio), dcss.m_State[arm.sdk_index].m_CurState);
   }
 
   bool set_joint_pid_control_type(const ArmRuntime & arm, const long value)
