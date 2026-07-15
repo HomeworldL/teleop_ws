@@ -10,7 +10,9 @@ install(DIRECTORY launch
 
 install(PROGRAMS
   scripts/wave_demo.py
+  scripts/dual_wave_demo.py
   scripts/home.py
+  scripts/wujihand_joint_control_ui.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
