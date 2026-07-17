@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+"""Publish Wuji Glove hand keypoints as ROS 2 PoseArray messages."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+import time
+from pathlib import Path
+from typing import Optional
+
+import rclpy
+import yaml
+from ament_index_python.packages import PackageNotFoundError, get_package_share_directory
+from geometry_msgs.msg import Pose, PoseArray
+from rclpy.node import Node
+from rclpy.utilities import remove_ros_args
+
+
+DEFAULT_PUBLISH_RATE_HZ = 120.0
+RECV_TIMEOUT_SEC = 2.0
+
+
+def _package_config_path(filename: str) -> Optional[Path]:
+    try:
+        return Path(get_package_share_directory("wuji_glove")) / "config" / filename
+    except PackageNotFoundError:
+        return None
+
+
+def _resolve_config_path(config_path: Optional[str]) -> Path:
+    if config_path:
+        return Path(config_path).expanduser().resolve()
+    live = _package_config_path("wuji_glove.yaml")
+    if live is not None and live.exists():
+        return live
+    template = _package_config_path("wuji_glove.yaml.template")
+    if template is not None and template.exists():
+        return template
+    raise FileNotFoundError("wuji_glove.yaml or wuji_glove.yaml.template not found")
+
+
+def _load_yaml(path: Path) -> dict:
+    if not path.exists():
+        raise FileNotFoundError(f"config file not found: {path}")
+    with path.open("r", encoding="utf-8") as stream:
+        return yaml.safe_load(stream) or {}
+
+
+def _skeleton_to_pose_array(skeleton, stamp, frame_id: str) -> Optional[PoseArray]:
+    joints = getattr(skeleton, "joints", None)
+    if joints is None or len(joints) != 21:
+        return None
+
+    msg = PoseArray()
+    msg.header.stamp = stamp
+    msg.header.frame_id = frame_id
+    for joint in joints:
+        position = joint.pose.position
+        pose = Pose()
+        pose.position.x = float(position[0])
+        pose.position.y = float(position[1])
+        pose.position.z = float(position[2])
+        pose.orientation.w = 1.0
+        msg.poses.append(pose)
+    return msg
+
+
+class WujiGloveNode(Node):
+    """Connect one Wuji Glove and publish its 21 keypoints."""
+
+    def __init__(
+        self,
+        side: str,
+        config_path: Optional[str],
+        topic: Optional[str],
+        publish_rate: float,
+    ):
+        super().__init__(f"wuji_glove_{side}")
+        self._side = side
+        self._config_path = _resolve_config_path(config_path)
+        cfg = _load_yaml(self._config_path)[f"{side}_glove"]
+
+        self._glove_sn = str(cfg["serial_number"])
+        self._device_name = str(cfg.get("device_name", f"{side}_glove"))
+        self._topic = topic or f"/wuji_glove/{side}/keypoints"
+        self._frame_id = f"wuji_glove_{side}"
+        self._sdk_device = None
+        self._sdk_sub = None
+        self._last_recv_time = 0.0
+        self._reconnect_log_counter = 0
+
+        self._publisher = self.create_publisher(PoseArray, self._topic, 10)
+        if publish_rate <= 0.0:
+            raise ValueError(f"publish_rate must be > 0, got {publish_rate}")
+        self.create_timer(1.0 / publish_rate, self._poll)
+
+        self.get_logger().info(
+            f"Starting Wuji Glove publisher: side={side}, topic={self._topic}, "
+            f"sn={self._glove_sn}, config={self._config_path}"
+        )
+        self._connect()
+
+    def _connect(self) -> bool:
+        from wuji_sdk import ConnectOptions, SdkManager
+
+        self._sdk_sub = None
+        self._sdk_device = None
+
+        try:
+            opts = ConnectOptions(enable_bridge=False)
+            device = SdkManager.instance().connect(
+                sn=self._glove_sn,
+                device_name=self._device_name,
+                options=opts,
+            )
+        except Exception as exc:
+            self._reconnect_log_counter += 1
+            if self._reconnect_log_counter == 1 or self._reconnect_log_counter % 10 == 0:
+                self.get_logger().warn(
+                    f"wuji_sdk connect attempt #{self._reconnect_log_counter} failed: {exc}"
+                )
+            return False
+
+        actual_side = device.hand_side().get().lower()
+        if actual_side != self._side:
+            raise RuntimeError(
+                f"{self._side}_glove SN={self._glove_sn} reports hand_side={actual_side}; "
+                "swap left_glove/right_glove serial numbers in wuji_glove.yaml"
+            )
+
+        self._sdk_device = device
+        self._sdk_sub = device.hand_skeleton().subscribe()
+        self._last_recv_time = time.monotonic()
+        was_retry = self._reconnect_log_counter > 0
+        self._reconnect_log_counter = 0
+        self.get_logger().info(
+            f"wuji_sdk {'re' if was_retry else ''}connected: "
+            f"SN={self._glove_sn}, side={actual_side}, device_name={self._device_name}"
+        )
+        return True
+
+    def _poll(self) -> None:
+        now = time.monotonic()
+        if self._sdk_sub is None:
+            self._connect()
+            return
+
+        skeleton = self._sdk_sub.recv()
+        if skeleton is None:
+            if now - self._last_recv_time > RECV_TIMEOUT_SEC:
+                self.get_logger().warn(
+                    f"no skeleton frame for {now - self._last_recv_time:.1f}s, reconnecting"
+                )
+                self._connect()
+            return
+
+        self._last_recv_time = now
+
+        while True:
+            newer = self._sdk_sub.recv()
+            if newer is None:
+                break
+            skeleton = newer
+
+        msg = _skeleton_to_pose_array(
+            skeleton,
+            self.get_clock().now().to_msg(),
+            self._frame_id,
+        )
+        if msg is not None:
+            self._publisher.publish(msg)
+
+    def shutdown(self) -> None:
+        self.get_logger().info("Shutting down Wuji Glove publisher")
+        self._sdk_sub = None
+        self._sdk_device = None
+
+
+def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Wuji Glove keypoint publisher")
+    parser.add_argument("--side", required=True, choices=["left", "right"])
+    parser.add_argument("--config", help="wuji_glove.yaml path")
+    parser.add_argument("--topic", help="output PoseArray topic")
+    parser.add_argument(
+        "--publish-rate",
+        type=float,
+        default=DEFAULT_PUBLISH_RATE_HZ,
+        help="poll/publish rate in Hz",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    program_name = sys.argv[0] if sys.argv else "wuji_glove_node"
+    raw_argv = sys.argv if argv is None else [program_name, *argv]
+    args = _parse_args(remove_ros_args(raw_argv)[1:])
+
+    rclpy.init(args=raw_argv)
+    node = None
+    try:
+        node = WujiGloveNode(
+            side=args.side,
+            config_path=args.config,
+            topic=args.topic,
+            publish_rate=args.publish_rate,
+        )
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if node is not None:
+            node.shutdown()
+            node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

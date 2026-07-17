@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Scan Wuji Glove devices through wuji_sdk."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+
+
+_IP_LAST_OCTET_RE = re.compile(r"\.(\d+)(?::|$)")
+
+
+def _suggest_side(address: str) -> str:
+    match = _IP_LAST_OCTET_RE.search(address or "")
+    if not match:
+        return "unknown"
+    last = int(match.group(1))
+    if last == 100:
+        return "left"
+    if last == 101:
+        return "right"
+    return "unknown"
+
+
+def _scan(include_non_udp: bool) -> list[dict]:
+    try:
+        from wuji_sdk import SdkManager
+    except ImportError as exc:
+        raise RuntimeError("wuji_sdk is not installed") from exc
+
+    results = []
+    for device in SdkManager.instance().scan():
+        sn = getattr(device, "sn", "") or ""
+        address = getattr(device, "address", "") or ""
+        transport = str(getattr(device, "transport_type", "") or "")
+        if not sn:
+            continue
+        if not include_non_udp and "udp" not in transport.lower():
+            continue
+        results.append(
+            {
+                "sn": sn,
+                "address": address,
+                "transport": transport,
+                "suggested_side": _suggest_side(address),
+            }
+        )
+    return results
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Scan Wuji Glove devices")
+    parser.add_argument(
+        "--include-non-udp",
+        action="store_true",
+        help="include devices discovered through non-UDP transports",
+    )
+    parser.add_argument("--json", action="store_true", help="print JSON output")
+    args = parser.parse_args(argv)
+
+    try:
+        devices = _scan(args.include_non_udp)
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(devices, indent=2, ensure_ascii=False))
+        return 0
+
+    if not devices:
+        print("No Wuji Glove devices found.")
+        return 0
+
+    for device in devices:
+        print(
+            "sn={sn}  address={address}  transport={transport}  side={suggested_side}".format(
+                **device
+            )
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+

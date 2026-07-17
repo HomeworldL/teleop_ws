@@ -1,0 +1,16 @@
+# Wuji Glove serial-number binding (input device config).
+# Loaded by wuji_glove_node and wujihand_teleop launch when input_source=wuji_glove.
+# Copy this file to wuji_glove.yaml and replace the serial numbers for normal
+# hardware use. Launch files fall back to this template when the live yaml is
+# not present.
+#
+# Scan glove serial numbers with:
+#   ros2 run wuji_glove wuji_glove_scan
+
+left_glove:
+  serial_number: "YOUR_LEFT_GLOVE_SERIAL"
+  device_name: "left_glove"
+
+right_glove:
+  serial_number: "YOUR_RIGHT_GLOVE_SERIAL"
+  device_name: "right_glove"
