@@ -1,100 +1,107 @@
 # wujihand_teleop
 
-`wujihand_teleop` maps Wuji Glove keypoint topics to Wuji Hand joint commands.
-The first version intentionally focuses on hand teleoperation only.
+`wujihand_teleop` only retargets Wuji Glove keypoints into Wuji Hand joint
+commands. It does not connect to the gloves or to the hand hardware.
 
 ## Data Flow
 
 ```text
-wuji_glove_node -> /wuji_glove/{left,right}/keypoints
-  -> wujihand_controller -> wuji_retargeting
-  -> /hand_left|right/joint_commands
+/wuji_glove/left/keypoints
+  -> wujihand_retarget --side left
+  -> /hand_left/joint_commands
+
+/wuji_glove/right/keypoints
+  -> wujihand_retarget --side right
+  -> /hand_right/joint_commands
 ```
 
-Each glove and each hand controller runs in its own Python process. This keeps
-the input device layer reusable for arm teleoperation, visualization, and
-recording while preserving per-side retargeting isolation.
+Left and right hands run as separate `wujihand_retarget` processes. Each process
+owns one retargeter, preserving per-side parallelism and avoiding one shared
+Python GIL for both hands.
 
-## Configure
+## Launch Order
 
-Copy the hand config template and fill in Wuji Hand serial numbers:
+Start glove input first:
 
 ```bash
-cp src/teleop_algorithm/wujihand_teleop/config/wujihand_teleop.yaml.template \
-  src/teleop_algorithm/wujihand_teleop/config/wujihand_teleop.yaml
+ros2 launch wuji_glove wuji_glove.launch.py
 ```
 
-Configure glove serials in:
-
-```text
-src/teleop_device/wuji_glove/config/wuji_glove.yaml
-```
-
-For day-to-day hardware testing, either build with `--symlink-install`, or pass
-the source config paths explicitly when launching. Without that, an older
-non-symlink install may still use the installed `.yaml.template` files.
-
-Default hand namespaces are:
-
-```text
-/hand_left
-/hand_right
-```
-
-## Launch
-
-Build and source the workspace first:
+Then start the Wuji Hand hardware driver. The driver package's dual-hand
+auto-discovery launch is recommended:
 
 ```bash
-colcon build --packages-select wuji_glove wujihand_teleop
-source install/setup.zsh   # zsh
-# source install/setup.bash  # bash
+ros2 launch wujihand_bringup wujihand_dual.launch.py
 ```
 
-Dual hand:
+Finally start retargeting:
 
 ```bash
-ros2 launch wujihand_teleop wujihand_teleop.launch.py
+ros2 launch wujihand_teleop wujihand_retarget.launch.py
 ```
 
-This launch starts both Wuji Glove publisher nodes, both Wuji Hand driver nodes,
-and both retarget controller nodes.
-
-Dual hand with source-tree configs:
+Left hand only:
 
 ```bash
-ros2 launch wujihand_teleop wujihand_teleop.launch.py \
-  hand_config:=$PWD/src/teleop_algorithm/wujihand_teleop/config/wujihand_teleop.yaml \
-  glove_config:=$PWD/src/teleop_device/wuji_glove/config/wuji_glove.yaml \
+ros2 launch wujihand_teleop wujihand_retarget.launch.py enable_right:=false
+```
+
+Right hand only:
+
+```bash
+ros2 launch wujihand_teleop wujihand_retarget.launch.py enable_left:=false
+```
+
+Use source-tree retarget configs explicitly:
+
+```bash
+ros2 launch wujihand_teleop wujihand_retarget.launch.py \
   retarget_config_dir:=$PWD/src/teleop_algorithm/wujihand_teleop/config
 ```
 
-Single hand:
+## Topics
 
-```bash
-ros2 launch wujihand_teleop wujihand_teleop.launch.py enable_right:=false
-ros2 launch wujihand_teleop wujihand_teleop.launch.py enable_left:=false
+Default inputs:
+
+```text
+/wuji_glove/left/keypoints
+/wuji_glove/right/keypoints
 ```
 
-Verify command rates:
+Default outputs:
+
+```text
+/hand_left/joint_commands
+/hand_right/joint_commands
+```
+
+Default feedback gates:
+
+```text
+/hand_left/joint_states
+/hand_right/joint_states
+```
+
+By default, each retarget node waits for fresh feedback on the matching
+`/hand_*/joint_states` topic before publishing commands. This prevents blind
+command publication while the hand driver is not running or feedback is stale.
+Pass `require_feedback:=false` to disable the gate.
+
+## Checks
 
 ```bash
 ros2 topic hz /wuji_glove/left/keypoints
-ros2 topic hz /wuji_glove/right/keypoints
+ros2 topic hz /hand_left/joint_states
 ros2 topic hz /hand_left/joint_commands
-ros2 topic hz /hand_right/joint_commands
 ```
 
 ## Dependencies
 
 Runtime requires:
 
-- `wuji_sdk`
 - `wuji_retargeting`
 - `pinocchio`
 - `nlopt`
-- `wujihand_driver`
 
-The current workspace already contains `wujihand_driver`. The Python retargeting
-dependencies are not vendored here yet; install or vendor them before hardware
-bringup.
+Glove connection is owned by the `wuji_glove` package. Hand hardware connection
+is owned by `wujihand_driver` / `wujihand_bringup`.

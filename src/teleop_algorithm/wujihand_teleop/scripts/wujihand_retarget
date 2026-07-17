@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+"""Retarget one Wuji Glove keypoint stream to one Wuji Hand command topic."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+import time
+from pathlib import Path
+from typing import Optional
+
+import numpy as np
+import rclpy
+from ament_index_python.packages import PackageNotFoundError, get_package_share_directory
+from geometry_msgs.msg import PoseArray
+from rclpy.node import Node
+from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
+from rclpy.utilities import remove_ros_args
+from sensor_msgs.msg import JointState
+
+
+DEFAULT_CONTROL_RATE_HZ = 120.0
+DEFAULT_FEEDBACK_TIMEOUT_SEC = 1.0
+NUM_KEYPOINTS = 21
+NUM_JOINTS = 20
+
+
+def sensor_data_qos() -> QoSProfile:
+    return QoSProfile(
+        reliability=ReliabilityPolicy.BEST_EFFORT,
+        history=HistoryPolicy.KEEP_LAST,
+        depth=10,
+    )
+
+
+def pose_array_to_keypoints(msg: PoseArray) -> Optional[np.ndarray]:
+    if len(msg.poses) != NUM_KEYPOINTS:
+        return None
+    return np.array(
+        [[pose.position.x, pose.position.y, pose.position.z] for pose in msg.poses],
+        dtype=np.float32,
+    )
+
+
+def resolve_retarget_config(
+    side: str,
+    explicit_config: Optional[str],
+    config_dir: Optional[str],
+) -> Path:
+    if explicit_config:
+        path = Path(explicit_config).expanduser().resolve()
+        if not path.exists():
+            raise FileNotFoundError(f"retarget config not found: {path}")
+        return path
+
+    candidate_dirs: list[Path] = []
+    if config_dir:
+        candidate_dirs.append(Path(config_dir).expanduser().resolve())
+
+    try:
+        candidate_dirs.append(Path(get_package_share_directory("wujihand_teleop")) / "config")
+    except PackageNotFoundError:
+        pass
+
+    for directory in candidate_dirs:
+        for filename in (
+            f"retarget_wuji_glove_{side}.yaml",
+            "retarget_wuji_glove.yaml",
+        ):
+            path = directory / filename
+            if path.exists():
+                return path
+
+    searched = ", ".join(str(path) for path in candidate_dirs) or "<none>"
+    raise FileNotFoundError(
+        f"no retarget config found for side={side}; searched: {searched}"
+    )
+
+
+class WujiHandRetargetNode(Node):
+    """Per-hand retarget node.
+
+    One process handles one side only. The launch file starts left and right as
+    separate processes so each side has its own retargeter and Python GIL.
+    """
+
+    def __init__(
+        self,
+        side: str,
+        hand_name: str,
+        keypoints_topic: Optional[str],
+        command_topic: Optional[str],
+        state_topic: Optional[str],
+        retarget_config: Optional[str],
+        retarget_config_dir: Optional[str],
+    ) -> None:
+        super().__init__(f"wujihand_retarget_{side}")
+
+        self._side = side
+        self._hand_name = hand_name
+        self._keypoints_topic = keypoints_topic or f"/wuji_glove/{side}/keypoints"
+        self._command_topic = command_topic or f"/{hand_name}/joint_commands"
+        self._state_topic = state_topic or f"/{hand_name}/joint_states"
+
+        self.declare_parameter("control_rate", DEFAULT_CONTROL_RATE_HZ)
+        self.declare_parameter("require_feedback", True)
+        self.declare_parameter("feedback_timeout", DEFAULT_FEEDBACK_TIMEOUT_SEC)
+
+        self._control_rate_hz = float(self.get_parameter("control_rate").value)
+        self._require_feedback = bool(self.get_parameter("require_feedback").value)
+        self._feedback_timeout = float(self.get_parameter("feedback_timeout").value)
+        if self._control_rate_hz <= 0.0:
+            raise ValueError(f"control_rate must be > 0, got {self._control_rate_hz}")
+        if self._feedback_timeout <= 0.0:
+            raise ValueError(f"feedback_timeout must be > 0, got {self._feedback_timeout}")
+
+        config_path = resolve_retarget_config(side, retarget_config, retarget_config_dir)
+        try:
+            from wuji_retargeting import Retargeter
+        except ImportError as exc:
+            raise RuntimeError("wuji_retargeting is not installed") from exc
+        self._retargeter = Retargeter.from_yaml(str(config_path), side)
+
+        self._pending_keypoints: Optional[np.ndarray] = None
+        self._last_feedback_time = 0.0
+        self._last_wait_log_time = 0.0
+
+        qos = sensor_data_qos()
+        self._cmd_pub = self.create_publisher(JointState, self._command_topic, qos)
+        self.create_subscription(PoseArray, self._keypoints_topic, self._on_keypoints, 10)
+        self.create_subscription(JointState, self._state_topic, self._on_state, qos)
+        self.create_timer(1.0 / self._control_rate_hz, self._teleop_loop)
+
+        self.get_logger().info(
+            f"Ready: side={side}, keypoints={self._keypoints_topic}, "
+            f"commands={self._command_topic}, states={self._state_topic}, "
+            f"rate={self._control_rate_hz:.1f}Hz, config={config_path}"
+        )
+
+    def _on_keypoints(self, msg: PoseArray) -> None:
+        keypoints = pose_array_to_keypoints(msg)
+        if keypoints is None:
+            self.get_logger().warning(
+                f"ignored {self._keypoints_topic}: expected {NUM_KEYPOINTS} poses, "
+                f"got {len(msg.poses)}"
+            )
+            return
+        self._pending_keypoints = keypoints
+
+    def _on_state(self, msg: JointState) -> None:
+        if len(msg.position) != NUM_JOINTS:
+            return
+        first_feedback = self._last_feedback_time == 0.0
+        self._last_feedback_time = time.monotonic()
+        if first_feedback:
+            self.get_logger().info(f"Received initial feedback from {self._state_topic}")
+
+    def _feedback_ready(self) -> bool:
+        if not self._require_feedback:
+            return True
+        now = time.monotonic()
+        if self._last_feedback_time > 0.0 and now - self._last_feedback_time <= self._feedback_timeout:
+            return True
+        if now - self._last_wait_log_time > 2.0:
+            self._last_wait_log_time = now
+            self.get_logger().warning(f"Waiting for fresh feedback on {self._state_topic}")
+        return False
+
+    def _teleop_loop(self) -> None:
+        keypoints = self._pending_keypoints
+        self._pending_keypoints = None
+        if keypoints is None or not self._feedback_ready():
+            return
+
+        try:
+            positions = np.asarray(self._retargeter.retarget(keypoints), dtype=np.float32)
+        except Exception as exc:
+            self.get_logger().error(f"{self._side}-hand retarget failed: {exc}")
+            return
+
+        if positions.shape == (5, 4):
+            positions = positions.flatten()
+        if positions.shape != (NUM_JOINTS,):
+            self.get_logger().error(
+                f"retarget returned shape {positions.shape}, expected ({NUM_JOINTS},) or (5, 4)"
+            )
+            return
+
+        msg = JointState()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.position = positions.tolist()
+        self._cmd_pub.publish(msg)
+
+
+def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Wuji Glove to Wuji Hand retarget node")
+    parser.add_argument("--side", required=True, choices=["left", "right"])
+    parser.add_argument("--hand-name", help="Wuji Hand driver namespace")
+    parser.add_argument("--keypoints-topic", help="input PoseArray topic")
+    parser.add_argument("--command-topic", help="output JointState command topic")
+    parser.add_argument("--state-topic", help="input JointState feedback topic")
+    parser.add_argument("--retarget-config", help="explicit retarget yaml path")
+    parser.add_argument(
+        "--retarget-config-dir",
+        help="directory containing retarget_wuji_glove_{left,right}.yaml",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    program_name = sys.argv[0] if sys.argv else "wujihand_retarget"
+    raw_argv = sys.argv if argv is None else [program_name, *argv]
+    args = parse_args(remove_ros_args(raw_argv)[1:])
+
+    hand_name = args.hand_name or ("hand_left" if args.side == "left" else "hand_right")
+
+    rclpy.init(args=raw_argv)
+    node = None
+    try:
+        node = WujiHandRetargetNode(
+            side=args.side,
+            hand_name=hand_name,
+            keypoints_topic=args.keypoints_topic,
+            command_topic=args.command_topic,
+            state_topic=args.state_topic,
+            retarget_config=args.retarget_config,
+            retarget_config_dir=args.retarget_config_dir,
+        )
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if node is not None:
+            node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

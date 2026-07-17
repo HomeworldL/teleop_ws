@@ -2,9 +2,6 @@ cmake_minimum_required(VERSION 3.8)
 project(wujihand_teleop)
 
 find_package(ament_cmake REQUIRED)
-find_package(ament_cmake_python REQUIRED)
-
-ament_python_install_package(${PROJECT_NAME})
 
 install(
   DIRECTORY config launch
@@ -12,7 +9,7 @@ install(
 )
 
 install(
-  PROGRAMS scripts/wujihand_controller
+  PROGRAMS scripts/wujihand_retarget
   DESTINATION lib/${PROJECT_NAME}
 )
 
