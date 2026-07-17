@@ -1,0 +1,38 @@
+# HTC Vive Tracker input configuration.
+#
+# Fill serial numbers from:
+#   ros2 run vive_openvr list_trackers
+#
+# Roles are arbitrary labels consumed by later teleop algorithms. The first
+# Marvin teleop algorithm can use only left_wrist and right_wrist. Add chest
+# later when switching from incremental control to body-frame control.
+tracker_serials:
+  left_wrist: "LHR-E651F39A"
+  right_wrist: ""
+  # chest: ""
+  # left_arm: ""
+  # right_arm: ""
+
+# Offsets are applied in the raw tracker local frame before role correction.
+# Use this when the physical tracker origin is not the desired wrist point.
+wrist_offsets:
+  left_wrist: [0.0, 0.0, 0.0]
+  right_wrist: [0.0, 0.0, 0.0]
+
+publish_rate_hz: 120.0
+
+# OpenVR poses are queried in TrackingUniverseStanding. This parent frame is
+# the SteamVR standing tracking space, not the robot base frame.
+parent_frame: "vive_world"
+
+# Child TFs become vive/left_wrist, vive/right_wrist, etc. Set to "" to publish
+# bare role names.
+child_frame_prefix: "vive"
+
+publish_tf: true
+publish_pose_topics: true
+pose_topic_prefix: "/vive"
+
+# Keep enabled to match Wuji's OpenVR input role orientation conventions for
+# chest/left_wrist/right_wrist. Upper-arm trackers are passed through.
+apply_role_corrections: true

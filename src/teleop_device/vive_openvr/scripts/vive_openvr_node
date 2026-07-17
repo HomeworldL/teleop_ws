@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""Publish HTC Vive Tracker poses from SteamVR/OpenVR as ROS 2 TF and topics."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+import time
+from dataclasses import dataclass, fields
+from pathlib import Path
+from typing import Optional
+
+import numpy as np
+import rclpy
+import yaml
+from ament_index_python.packages import PackageNotFoundError, get_package_share_directory
+from geometry_msgs.msg import PoseStamped, TransformStamped
+from rclpy.node import Node
+from rclpy.utilities import remove_ros_args
+from tf2_ros import TransformBroadcaster
+
+from vive_openvr.openvr_tracker_wrapper import OpenVRTrackerWrapper
+from vive_openvr.transforms import child_frame_id, matrix_to_quaternion
+
+
+DEFAULT_RATE_HZ = 120.0
+RECONNECT_INTERVAL_SEC = 2.0
+
+
+@dataclass
+class ViveOpenVRConfig:
+    """Runtime configuration for the Vive OpenVR input node."""
+
+    tracker_serials: dict[str, str]
+    wrist_offsets: dict[str, list[float]]
+    publish_rate_hz: float = DEFAULT_RATE_HZ
+    parent_frame: str = "vive_world"
+    child_frame_prefix: str = "vive"
+    pose_topic_prefix: str = "/vive"
+    publish_tf: bool = True
+    publish_pose_topics: bool = True
+    apply_role_corrections: bool = True
+
+    @classmethod
+    def from_file(cls, path: Path) -> "ViveOpenVRConfig":
+        if not path.exists():
+            raise FileNotFoundError(f"config file not found: {path}")
+        with path.open("r", encoding="utf-8") as stream:
+            raw = yaml.safe_load(stream) or {}
+        if not isinstance(raw, dict):
+            raise ValueError("vive_openvr config root must be a mapping")
+
+        valid_fields = {field.name for field in fields(cls)}
+        data = {key: value for key, value in raw.items() if key in valid_fields}
+        data.setdefault("tracker_serials", {})
+        data.setdefault("wrist_offsets", {})
+        return cls(**data)
+
+
+def _package_config_path(filename: str) -> Optional[Path]:
+    try:
+        return Path(get_package_share_directory("vive_openvr")) / "config" / filename
+    except PackageNotFoundError:
+        return None
+
+
+def _resolve_config_path(config_path: Optional[str]) -> Path:
+    if config_path:
+        return Path(config_path).expanduser().resolve()
+    live = _package_config_path("vive_openvr.yaml")
+    if live is not None and live.exists():
+        return live
+    template = _package_config_path("vive_openvr.yaml.template")
+    if template is not None and template.exists():
+        return template
+    raise FileNotFoundError("vive_openvr.yaml or vive_openvr.yaml.template not found")
+
+
+def _filtered_serials(serials: dict[str, str]) -> dict[str, str]:
+    return {
+        str(role): str(serial)
+        for role, serial in (serials or {}).items()
+        if serial and not str(serial).startswith("LHR-XXXXXXXX")
+    }
+
+
+class ViveOpenVRNode(Node):
+    """ROS 2 node that streams configured Vive Tracker roles."""
+
+    def __init__(self, config_path: Optional[str]):
+        super().__init__("vive_openvr")
+        self._config_path = _resolve_config_path(config_path)
+        self._config = ViveOpenVRConfig.from_file(self._config_path)
+        self._tracker_serials = _filtered_serials(self._config.tracker_serials)
+        if not self._tracker_serials:
+            raise ValueError(
+                "no tracker serials configured; copy vive_openvr.yaml.template to "
+                "vive_openvr.yaml and fill tracker_serials from list_trackers"
+            )
+        if self._config.publish_rate_hz <= 0.0:
+            raise ValueError("publish_rate_hz must be > 0")
+
+        self._wrapper: Optional[OpenVRTrackerWrapper] = None
+        self._tf_broadcaster = TransformBroadcaster(self) if self._config.publish_tf else None
+        self._pose_publishers = {}
+        if self._config.publish_pose_topics:
+            for role in self._tracker_serials:
+                topic = f"{self._config.pose_topic_prefix.rstrip('/')}/{role}/pose"
+                self._pose_publishers[role] = self.create_publisher(PoseStamped, topic, 10)
+
+        self._last_connect_attempt = 0.0
+        self._last_missing_log = 0.0
+        self._connect()
+        self.create_timer(1.0 / self._config.publish_rate_hz, self._poll)
+
+        self.get_logger().info(
+            f"vive_openvr started: config={self._config_path}, "
+            f"roles={list(self._tracker_serials.keys())}, rate={self._config.publish_rate_hz:.1f} Hz"
+        )
+
+    def _connect(self) -> bool:
+        now = time.monotonic()
+        if now - self._last_connect_attempt < RECONNECT_INTERVAL_SEC:
+            return False
+        self._last_connect_attempt = now
+
+        try:
+            self._wrapper = OpenVRTrackerWrapper(
+                tracker_serials=self._tracker_serials,
+                wrist_offsets=self._config.wrist_offsets,
+                apply_role_corrections=self._config.apply_role_corrections,
+            )
+        except Exception as exc:
+            self.get_logger().warn(f"OpenVR connect failed: {exc}")
+            self._wrapper = None
+            return False
+
+        detected = self._wrapper.detected_roles()
+        missing = self._wrapper.missing_roles()
+        self.get_logger().info(f"OpenVR connected, detected roles: {detected}")
+        if missing:
+            self.get_logger().warn(f"Configured trackers not found: {missing}")
+        return True
+
+    def _poll(self) -> None:
+        if self._wrapper is None:
+            self._connect()
+            return
+
+        try:
+            poses = self._wrapper.get_poses()
+        except Exception as exc:
+            self.get_logger().warn(f"OpenVR pose query failed, reconnecting: {exc}")
+            self._shutdown_wrapper()
+            self._connect()
+            return
+
+        now_msg = self.get_clock().now().to_msg()
+        for role, matrix in poses.items():
+            if matrix is None:
+                continue
+            frame_id = child_frame_id(self._config.child_frame_prefix, role)
+            if self._tf_broadcaster is not None:
+                self._tf_broadcaster.sendTransform(
+                    self._matrix_to_transform(matrix, self._config.parent_frame, frame_id, now_msg)
+                )
+            publisher = self._pose_publishers.get(role)
+            if publisher is not None:
+                publisher.publish(self._matrix_to_pose(matrix, self._config.parent_frame, now_msg))
+
+        missing = set(self._tracker_serials) - set(poses)
+        if missing and time.monotonic() - self._last_missing_log > 5.0:
+            self._last_missing_log = time.monotonic()
+            self.get_logger().warn(f"No pose for configured roles: {sorted(missing)}")
+            self._wrapper.refresh_tracker_mapping()
+
+    def _matrix_to_transform(
+        self,
+        matrix: np.ndarray,
+        parent_frame: str,
+        frame_id: str,
+        stamp,
+    ) -> TransformStamped:
+        msg = TransformStamped()
+        msg.header.stamp = stamp
+        msg.header.frame_id = parent_frame
+        msg.child_frame_id = frame_id
+        self._fill_translation_rotation(msg.transform, matrix)
+        return msg
+
+    def _matrix_to_pose(self, matrix: np.ndarray, frame_id: str, stamp) -> PoseStamped:
+        msg = PoseStamped()
+        msg.header.stamp = stamp
+        msg.header.frame_id = frame_id
+        self._fill_translation_rotation(msg.pose, matrix)
+        return msg
+
+    @staticmethod
+    def _fill_translation_rotation(target, matrix: np.ndarray) -> None:
+        if hasattr(target, "translation"):
+            target.translation.y = float(matrix[1, 3])
+            target.translation.z = float(matrix[2, 3])
+            target.translation.x = float(matrix[0, 3])
+            rotation = target.rotation
+        else:
+            target.position.x = float(matrix[0, 3])
+            target.position.y = float(matrix[1, 3])
+            target.position.z = float(matrix[2, 3])
+            rotation = target.orientation
+
+        quat = matrix_to_quaternion(matrix)
+        rotation.x = quat[0]
+        rotation.y = quat[1]
+        rotation.z = quat[2]
+        rotation.w = quat[3]
+
+    def _shutdown_wrapper(self) -> None:
+        if self._wrapper is not None:
+            try:
+                self._wrapper.shutdown()
+            finally:
+                self._wrapper = None
+
+    def shutdown(self) -> None:
+        self.get_logger().info("Shutting down vive_openvr")
+        self._shutdown_wrapper()
+
+
+def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Publish Vive Tracker poses from OpenVR")
+    parser.add_argument("--config", help="Path to vive_openvr.yaml")
+    return parser.parse_args(argv)
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    program_name = sys.argv[0] if sys.argv else "vive_openvr_node"
+    raw_argv = sys.argv if argv is None else [program_name, *argv]
+    args = _parse_args(remove_ros_args(raw_argv)[1:])
+
+    rclpy.init(args=raw_argv)
+    node = None
+    try:
+        node = ViveOpenVRNode(config_path=args.config)
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if node is not None:
+            node.shutdown()
+            node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
