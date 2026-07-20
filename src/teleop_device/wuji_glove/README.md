@@ -23,6 +23,24 @@ The scanner filters non-UDP discoveries by default. Factory harnesses normally
 use `192.168.1.100` for the left glove and `192.168.1.101` for the right glove,
 so the scan output includes a best-effort side suggestion.
 
+Run the read-only glove check before teleoperation:
+
+```bash
+ros2 run wuji_glove wuji_glove_verify --side both
+```
+
+This check connects to the glove with `ConnectOptions(enable_bridge=False)`,
+reads one 21-joint skeleton frame, and verifies that the SDK log reports loading
+the user hand model. It does not start the Wuji Hand driver and does not publish
+hand commands.
+
+Single-side checks:
+
+```bash
+ros2 run wuji_glove wuji_glove_verify --side left
+ros2 run wuji_glove wuji_glove_verify --side right
+```
+
 ## Launch
 
 Build and source the workspace first:
@@ -66,6 +84,8 @@ filled; orientation is identity.
 ## Runtime Notes
 
 - Calibrate with Wuji Studio first, then close Wuji Studio before launching ROS.
+- Close Wuji Studio and stop glove/hand/teleop nodes before running
+  `wuji_glove_verify`, because the check needs exclusive access to the glove.
 - If scanning works but connection times out on a multi-NIC host, add per-glove
   `/32` routes to the NIC that can ping the glove IP.
 - The Python package `wuji_sdk` must be installed in the active environment.

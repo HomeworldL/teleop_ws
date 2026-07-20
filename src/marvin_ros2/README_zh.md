@@ -103,16 +103,16 @@ ros2 launch marvin_bringup marvin_impedance.launch.py robot_ip:=192.168.1.190 ar
 ros2 launch marvin_bringup marvin_impedance_pd.launch.py robot_ip:=192.168.1.190 arms:=both
 ```
 
-整机 RViz 显示单独启动，负责合并 Marvin 双臂和 Wuji 双手的关节状态：
+整机真实 bringup 会启动 Marvin/Wuji 底层 driver，并合并双臂双手关节状态用于 RViz：
 
 ```bash
-ros2 launch robot_bringup view_robot.launch.py
+ros2 launch robot_bringup bringup_real.launch.py
 ```
 
-只启动 `robot_state_publisher` 和 `/joint_states` 聚合，不打开 RViz：
+不打开 RViz：
 
 ```bash
-ros2 launch robot_bringup view_robot.launch.py rviz:=false
+ros2 launch robot_bringup bringup_real.launch.py rviz:=false
 ```
 
 确认 driver 已经启动、`/marvin/*/joint_states` 已经稳定发布后，才可以手动运行回零节点：

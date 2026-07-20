@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
@@ -211,9 +212,11 @@ def main(args: Optional[List[str]] = None) -> None:
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
-        node.destroy_node()
+        with suppress(KeyboardInterrupt, RCLError):
+            node.destroy_node()
         if rclpy.ok():
-            rclpy.shutdown()
+            with suppress(KeyboardInterrupt, RCLError):
+                rclpy.shutdown()
 
 
 if __name__ == "__main__":

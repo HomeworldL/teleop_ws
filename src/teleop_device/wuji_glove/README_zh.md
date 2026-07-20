@@ -22,6 +22,23 @@ ros2 run wuji_glove wuji_glove_scan
 扫描默认只保留 UDP 发现结果。出厂线束通常用 `192.168.1.100` 表示左手套，
 `192.168.1.101` 表示右手套，因此输出里会给出左右手建议。
 
+遥操作前先运行只读检查：
+
+```bash
+ros2 run wuji_glove wuji_glove_verify --side both
+```
+
+这个检查会用 `ConnectOptions(enable_bridge=False)` 连接手套，只读取一帧
+21 关节骨架，并检查 SDK 日志是否加载了用户手模型。它不会启动 Wuji Hand
+driver，也不会发布手部控制命令。
+
+单侧检查：
+
+```bash
+ros2 run wuji_glove wuji_glove_verify --side left
+ros2 run wuji_glove wuji_glove_verify --side right
+```
+
 ## 启动
 
 先编译并 source 工作区：
@@ -65,6 +82,8 @@ orientation 固定为单位四元数。
 ## 运行注意
 
 - 先用 Wuji Studio 完成校准，启动 ROS 前关闭 Wuji Studio。
+- 运行 `wuji_glove_verify` 前关闭 Wuji Studio，并停止 glove/hand/teleop 节点，
+  因为这个检查需要独占连接手套。
 - 如果能 scan 但 connect timeout，多半是多网卡同网段路由问题，需要给手套 IP
   添加指向正确网卡的 `/32` 路由。
 - 当前 Python 环境需要安装 `wuji_sdk`。

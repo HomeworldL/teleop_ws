@@ -14,11 +14,20 @@ import yaml
 from ament_index_python.packages import PackageNotFoundError, get_package_share_directory
 from geometry_msgs.msg import Pose, PoseArray
 from rclpy.node import Node
+from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.utilities import remove_ros_args
 
 
 DEFAULT_PUBLISH_RATE_HZ = 120.0
 RECV_TIMEOUT_SEC = 2.0
+
+
+def sensor_data_qos() -> QoSProfile:
+    return QoSProfile(
+        reliability=ReliabilityPolicy.BEST_EFFORT,
+        history=HistoryPolicy.KEEP_LAST,
+        depth=1,
+    )
 
 
 def _package_config_path(filename: str) -> Optional[Path]:
@@ -90,7 +99,7 @@ class WujiGloveNode(Node):
         self._last_recv_time = 0.0
         self._reconnect_log_counter = 0
 
-        self._publisher = self.create_publisher(PoseArray, self._topic, 10)
+        self._publisher = self.create_publisher(PoseArray, self._topic, sensor_data_qos())
         if publish_rate <= 0.0:
             raise ValueError(f"publish_rate must be > 0, got {publish_rate}")
         self.create_timer(1.0 / publish_rate, self._poll)

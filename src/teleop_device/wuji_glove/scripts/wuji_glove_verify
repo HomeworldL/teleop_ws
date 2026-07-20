@@ -1,0 +1,304 @@
+#!/usr/bin/env python3
+"""Read-only Wuji Glove connectivity and calibration verification."""
+
+from __future__ import annotations
+
+import argparse
+import importlib.metadata as metadata
+import math
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Optional
+
+import rclpy
+import yaml
+from ament_index_python.packages import PackageNotFoundError, get_package_share_directory
+from rclpy.node import Node
+from rclpy.utilities import remove_ros_args
+
+
+USER_MODEL_TOKEN = "online hand_model: loading user hand model"
+BUILTIN_MODEL_TOKEN = "using built-in"
+
+
+def _package_config_path(filename: str) -> Optional[Path]:
+    try:
+        return Path(get_package_share_directory("wuji_glove")) / "config" / filename
+    except PackageNotFoundError:
+        return None
+
+
+def _resolve_config_path(config_path: Optional[str]) -> Path:
+    if config_path:
+        return Path(config_path).expanduser().resolve()
+    live = _package_config_path("wuji_glove.yaml")
+    if live is not None and live.exists():
+        return live
+    template = _package_config_path("wuji_glove.yaml.template")
+    if template is not None and template.exists():
+        return template
+    raise FileNotFoundError("wuji_glove.yaml or wuji_glove.yaml.template not found")
+
+
+def _load_yaml(path: Path) -> dict:
+    if not path.exists():
+        raise FileNotFoundError(f"config file not found: {path}")
+    with path.open("r", encoding="utf-8") as stream:
+        return yaml.safe_load(stream) or {}
+
+
+def _configured_sn(value) -> str:
+    sn = "" if value is None else str(value).strip()
+    if not sn or sn.lower() in {"none", "null"} or sn.startswith("YOUR_"):
+        raise ValueError(f"glove serial number is not configured: {sn!r}")
+    return sn
+
+
+def _active_processes() -> list[str]:
+    try:
+        result = subprocess.run(
+            ["ps", "-eo", "args="],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return []
+    if result.returncode != 0:
+        return []
+
+    patterns = (
+        "wuji-studio",
+        "wuji_studio",
+        "wuji_glove_node",
+        "wujihand_retarget",
+        "wujihand_controller",
+        "wujihand_driver",
+        "wuji_teleop.launch",
+        "wujihand_teleop.launch",
+    )
+    matches = []
+    self_pid = str(os.getpid())
+    for line in result.stdout.splitlines():
+        if self_pid in line or "wuji_glove_verify" in line:
+            continue
+        if any(pattern in line for pattern in patterns):
+            matches.append(line.strip())
+    return matches
+
+
+def _worker_main(args: argparse.Namespace) -> int:
+    try:
+        from wuji_sdk import ConnectOptions, SdkManager
+    except ImportError as exc:
+        print(f"VERIFY ERROR wuji_sdk is not installed: {exc}", flush=True)
+        return 1
+
+    try:
+        sdk_version = metadata.version("wuji-sdk")
+    except metadata.PackageNotFoundError:
+        sdk_version = "unknown"
+    print(f"VERIFY sdk={sdk_version}", flush=True)
+
+    device = SdkManager.instance().connect(
+        sn=args.sn,
+        device_name=args.device_name,
+        options=ConnectOptions(enable_bridge=False),
+    )
+    actual_side = device.hand_side().get().lower()
+    print(f"VERIFY side={actual_side}", flush=True)
+    if actual_side != args.side:
+        raise RuntimeError(
+            f"SN={args.sn} reports hand_side={actual_side}, expected {args.side}"
+        )
+
+    sub = device.hand_skeleton().subscribe()
+    deadline = time.monotonic() + args.timeout
+    frame = None
+    while frame is None and time.monotonic() < deadline:
+        frame = sub.recv()
+        if frame is None:
+            time.sleep(0.01)
+    if frame is None:
+        raise TimeoutError(f"no hand_skeleton frame in {args.timeout:.1f}s")
+
+    joints = getattr(frame, "joints", None)
+    if joints is None:
+        raise RuntimeError("hand_skeleton frame has no joints field")
+    print(f"VERIFY joints={len(joints)}", flush=True)
+    if len(joints) != 21:
+        raise RuntimeError(f"expected 21 skeleton joints, got {len(joints)}")
+
+    points = []
+    for joint in joints:
+        pos = getattr(joint.pose, "position", None)
+        if pos is None or len(pos) != 3:
+            raise RuntimeError("skeleton joint position is not a length-3 vector")
+        xyz = [float(v) for v in pos]
+        if not all(math.isfinite(v) for v in xyz):
+            raise RuntimeError(f"skeleton contains non-finite position: {xyz}")
+        points.append(xyz)
+
+    mins = [min(point[i] for point in points) for i in range(3)]
+    maxs = [max(point[i] for point in points) for i in range(3)]
+    spread = max(maxs[i] - mins[i] for i in range(3))
+    print(f"VERIFY spread={spread:.6f}", flush=True)
+    if spread <= args.min_spread:
+        raise RuntimeError(
+            f"skeleton spread {spread:.6f} <= min_spread {args.min_spread:.6f}; "
+            "frame looks empty or collapsed"
+        )
+
+    print("VERIFY PASS", flush=True)
+    return 0
+
+
+class WujiGloveVerifyNode(Node):
+    """ROS wrapper that runs the SDK probe in a child process."""
+
+    def __init__(self, config_path: Optional[str], timeout: float, min_spread: float, skip_process_check: bool):
+        super().__init__("wuji_glove_verify")
+        self._config_path = _resolve_config_path(config_path)
+        self._config = _load_yaml(self._config_path)
+        self._timeout = timeout
+        self._min_spread = min_spread
+        self._skip_process_check = skip_process_check
+
+    def verify(self, sides: list[str]) -> bool:
+        if not self._skip_process_check:
+            active = _active_processes()
+            if active:
+                self.get_logger().error(
+                    "Close Wuji Studio and stop teleoperation/hand/glove nodes before "
+                    "running the read-only glove check."
+                )
+                for line in active[:8]:
+                    self.get_logger().error(f"active process: {line}")
+                return False
+
+        ok = True
+        for side in sides:
+            ok = self._verify_side(side) and ok
+        return ok
+
+    def _verify_side(self, side: str) -> bool:
+        key = f"{side}_glove"
+        if key not in self._config:
+            self.get_logger().error(f"{key} is missing in {self._config_path}")
+            return False
+
+        try:
+            sn = _configured_sn(self._config[key].get("serial_number"))
+        except ValueError as exc:
+            self.get_logger().error(str(exc))
+            return False
+        device_name = str(self._config[key].get("device_name", f"{side}_glove"))
+
+        self.get_logger().info(
+            f"Verifying {side} glove only: sn={sn}, device_name={device_name}, "
+            f"config={self._config_path}"
+        )
+        cmd = [
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "--worker",
+            "--side",
+            side,
+            "--sn",
+            sn,
+            "--device-name",
+            device_name,
+            "--timeout",
+            f"{self._timeout:.3f}",
+            "--min-spread",
+            f"{self._min_spread:.6f}",
+        ]
+        result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+        output = (result.stdout or "") + (result.stderr or "")
+        for line in output.splitlines():
+            if "VERIFY" in line or USER_MODEL_TOKEN in line or BUILTIN_MODEL_TOKEN in line:
+                self.get_logger().info(line)
+
+        if result.returncode != 0:
+            self.get_logger().error(f"{side} glove verification failed")
+            if output and "VERIFY" not in output:
+                self.get_logger().error(output.strip())
+            return False
+
+        if USER_MODEL_TOKEN not in output:
+            self.get_logger().error(
+                f"{side} glove SDK log did not report loading the user hand model"
+            )
+            return False
+        if BUILTIN_MODEL_TOKEN in output:
+            self.get_logger().error(
+                f"{side} glove SDK log reports built-in model fallback"
+            )
+            return False
+
+        self.get_logger().info(f"{side} glove verification passed")
+        return True
+
+
+def _parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Read-only Wuji Glove verification")
+    parser.add_argument("--side", default="both", choices=["left", "right", "both"])
+    parser.add_argument("--config", help="wuji_glove.yaml path")
+    parser.add_argument("--timeout", type=float, default=8.0, help="skeleton frame timeout in seconds")
+    parser.add_argument(
+        "--min-spread",
+        type=float,
+        default=0.01,
+        help="minimum point-cloud spread in meters for a valid skeleton",
+    )
+    parser.add_argument(
+        "--skip-process-check",
+        action="store_true",
+        help="do not reject if Studio or teleoperation processes appear to be active",
+    )
+    parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--sn", help=argparse.SUPPRESS)
+    parser.add_argument("--device-name", help=argparse.SUPPRESS)
+    return parser.parse_args(argv)
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    program_name = sys.argv[0] if sys.argv else "wuji_glove_verify"
+    raw_argv = sys.argv if argv is None else [program_name, *argv]
+    args = _parse_args(remove_ros_args(raw_argv)[1:])
+
+    if args.worker:
+        try:
+            return _worker_main(args)
+        except Exception as exc:
+            print(f"VERIFY ERROR {exc}", flush=True)
+            return 1
+
+    if args.timeout <= 0.0:
+        raise ValueError(f"timeout must be > 0, got {args.timeout}")
+    if args.min_spread < 0.0:
+        raise ValueError(f"min_spread must be >= 0, got {args.min_spread}")
+
+    rclpy.init(args=raw_argv)
+    node = None
+    try:
+        node = WujiGloveVerifyNode(
+            config_path=args.config,
+            timeout=args.timeout,
+            min_spread=args.min_spread,
+            skip_process_check=args.skip_process_check,
+        )
+        sides = ["left", "right"] if args.side == "both" else [args.side]
+        return 0 if node.verify(sides) else 1
+    finally:
+        if node is not None:
+            node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

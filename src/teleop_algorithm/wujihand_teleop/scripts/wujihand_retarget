@@ -12,6 +12,7 @@ from typing import Optional
 import numpy as np
 import rclpy
 from ament_index_python.packages import PackageNotFoundError, get_package_share_directory
+from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from geometry_msgs.msg import PoseArray
 from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
@@ -21,6 +22,12 @@ from sensor_msgs.msg import JointState
 
 DEFAULT_CONTROL_RATE_HZ = 120.0
 DEFAULT_FEEDBACK_TIMEOUT_SEC = 1.0
+DEFAULT_INPUT_TIMEOUT_SEC = 0.3
+DEFAULT_STARTUP_RAMP_SEC = 0.5
+DEFAULT_MAX_JOINT_VELOCITY_RAD_S = 3.14
+DEFAULT_DIAGNOSTICS_RATE_HZ = 2.0
+DEFAULT_NLOPT_MAX_EVAL = 25
+DEFAULT_MIN_KEYPOINT_SPREAD_M = 0.01
 NUM_KEYPOINTS = 21
 NUM_JOINTS = 20
 
@@ -29,7 +36,7 @@ def sensor_data_qos() -> QoSProfile:
     return QoSProfile(
         reliability=ReliabilityPolicy.BEST_EFFORT,
         history=HistoryPolicy.KEEP_LAST,
-        depth=10,
+        depth=1,
     )
 
 
@@ -105,14 +112,48 @@ class WujiHandRetargetNode(Node):
         self.declare_parameter("control_rate", DEFAULT_CONTROL_RATE_HZ)
         self.declare_parameter("require_feedback", True)
         self.declare_parameter("feedback_timeout", DEFAULT_FEEDBACK_TIMEOUT_SEC)
+        self.declare_parameter("input_timeout", DEFAULT_INPUT_TIMEOUT_SEC)
+        self.declare_parameter("startup_ramp_sec", DEFAULT_STARTUP_RAMP_SEC)
+        self.declare_parameter("max_joint_velocity", DEFAULT_MAX_JOINT_VELOCITY_RAD_S)
+        self.declare_parameter("dry_run", False)
+        self.declare_parameter("publish_diagnostics", True)
+        self.declare_parameter("diagnostics_rate", DEFAULT_DIAGNOSTICS_RATE_HZ)
+        self.declare_parameter("nlopt_max_eval", DEFAULT_NLOPT_MAX_EVAL)
+        self.declare_parameter("min_keypoint_spread", DEFAULT_MIN_KEYPOINT_SPREAD_M)
+        self.declare_parameter("clip_to_joint_limits", True)
+        self.declare_parameter("retarget_verbose", False)
 
         self._control_rate_hz = float(self.get_parameter("control_rate").value)
         self._require_feedback = bool(self.get_parameter("require_feedback").value)
         self._feedback_timeout = float(self.get_parameter("feedback_timeout").value)
+        self._input_timeout = float(self.get_parameter("input_timeout").value)
+        self._startup_ramp_sec = float(self.get_parameter("startup_ramp_sec").value)
+        self._max_joint_velocity = float(self.get_parameter("max_joint_velocity").value)
+        self._dry_run = bool(self.get_parameter("dry_run").value)
+        self._publish_diagnostics = bool(self.get_parameter("publish_diagnostics").value)
+        self._diagnostics_rate_hz = float(self.get_parameter("diagnostics_rate").value)
+        self._nlopt_max_eval = int(self.get_parameter("nlopt_max_eval").value)
+        self._min_keypoint_spread = float(self.get_parameter("min_keypoint_spread").value)
+        self._clip_to_joint_limits = bool(self.get_parameter("clip_to_joint_limits").value)
+        self._retarget_verbose = bool(self.get_parameter("retarget_verbose").value)
         if self._control_rate_hz <= 0.0:
             raise ValueError(f"control_rate must be > 0, got {self._control_rate_hz}")
         if self._feedback_timeout <= 0.0:
             raise ValueError(f"feedback_timeout must be > 0, got {self._feedback_timeout}")
+        if self._input_timeout <= 0.0:
+            raise ValueError(f"input_timeout must be > 0, got {self._input_timeout}")
+        if self._startup_ramp_sec < 0.0:
+            raise ValueError(f"startup_ramp_sec must be >= 0, got {self._startup_ramp_sec}")
+        if self._max_joint_velocity < 0.0:
+            raise ValueError(f"max_joint_velocity must be >= 0, got {self._max_joint_velocity}")
+        if self._diagnostics_rate_hz <= 0.0:
+            raise ValueError(f"diagnostics_rate must be > 0, got {self._diagnostics_rate_hz}")
+        if self._nlopt_max_eval < 0:
+            raise ValueError(f"nlopt_max_eval must be >= 0, got {self._nlopt_max_eval}")
+        if self._min_keypoint_spread < 0.0:
+            raise ValueError(
+                f"min_keypoint_spread must be >= 0, got {self._min_keypoint_spread}"
+            )
 
         config_path = resolve_retarget_config(side, retarget_config, retarget_config_dir)
         try:
@@ -120,22 +161,77 @@ class WujiHandRetargetNode(Node):
         except ImportError as exc:
             raise RuntimeError("wuji_retargeting is not installed") from exc
         self._retargeter = Retargeter.from_yaml(str(config_path), side)
+        self._configure_optimizer()
+        self._joint_lower_limits, self._joint_upper_limits = self._read_joint_limits()
 
-        self._pending_keypoints: Optional[np.ndarray] = None
+        self._latest_keypoints: Optional[np.ndarray] = None
+        self._last_keypoints_time = 0.0
+        self._last_feedback_positions: Optional[np.ndarray] = None
         self._last_feedback_time = 0.0
         self._last_wait_log_time = 0.0
+        self._last_input_wait_log_time = 0.0
+        self._ramp_start_time: Optional[float] = None
+        self._ramp_start_positions: Optional[np.ndarray] = None
+        self._last_command_positions: Optional[np.ndarray] = None
+        self._last_command_time: Optional[float] = None
+        self._last_retarget_ms = 0.0
+        self._last_status = "waiting_for_input"
+        self._last_error = ""
+        self._commands_sent = 0
+        self._limited_commands = 0
+        self._dropped_invalid = 0
+        self._stream_paused = True
+        self._last_cost = None
+        self._last_pinch_alphas: Optional[np.ndarray] = None
+        self._last_keypoint_spread = 0.0
 
         qos = sensor_data_qos()
         self._cmd_pub = self.create_publisher(JointState, self._command_topic, qos)
-        self.create_subscription(PoseArray, self._keypoints_topic, self._on_keypoints, 10)
+        self._diag_pub = self.create_publisher(
+            DiagnosticArray,
+            f"/wujihand_teleop/{side}/diagnostics",
+            10,
+        )
+        self.create_subscription(PoseArray, self._keypoints_topic, self._on_keypoints, qos)
         self.create_subscription(JointState, self._state_topic, self._on_state, qos)
         self.create_timer(1.0 / self._control_rate_hz, self._teleop_loop)
+        if self._publish_diagnostics:
+            self.create_timer(1.0 / self._diagnostics_rate_hz, self._publish_diagnostics_msg)
 
         self.get_logger().info(
             f"Ready: side={side}, keypoints={self._keypoints_topic}, "
             f"commands={self._command_topic}, states={self._state_topic}, "
-            f"rate={self._control_rate_hz:.1f}Hz, config={config_path}"
+            f"rate={self._control_rate_hz:.1f}Hz, input_timeout={self._input_timeout:.2f}s, "
+            f"startup_ramp={self._startup_ramp_sec:.2f}s, "
+            f"max_joint_velocity={self._max_joint_velocity:.2f}rad/s, "
+            f"nlopt_max_eval={self._nlopt_max_eval}, "
+            f"min_keypoint_spread={self._min_keypoint_spread:.3f}m, "
+            f"clip_to_joint_limits={self._clip_to_joint_limits}, "
+            f"retarget_verbose={self._retarget_verbose}, dry_run={self._dry_run}, "
+            f"config={config_path}"
         )
+
+    def _configure_optimizer(self) -> None:
+        if self._nlopt_max_eval == 0:
+            return
+        optimizer = getattr(self._retargeter, "optimizer", None)
+        opt = getattr(optimizer, "opt", None)
+        if opt is None or not hasattr(opt, "set_maxeval"):
+            self.get_logger().warning("retargeter optimizer does not expose nlopt set_maxeval")
+            return
+        opt.set_maxeval(self._nlopt_max_eval)
+
+    def _read_joint_limits(self) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+        optimizer = getattr(self._retargeter, "optimizer", None)
+        robot = getattr(optimizer, "robot", None)
+        limits = getattr(robot, "joint_limits", None)
+        if limits is None:
+            return None, None
+        limits = np.asarray(limits, dtype=np.float32)
+        if limits.shape != (NUM_JOINTS, 2):
+            self.get_logger().warning(f"ignored unexpected retarget joint_limits shape {limits.shape}")
+            return None, None
+        return limits[:, 0], limits[:, 1]
 
     def _on_keypoints(self, msg: PoseArray) -> None:
         keypoints = pose_array_to_keypoints(msg)
@@ -145,12 +241,33 @@ class WujiHandRetargetNode(Node):
                 f"got {len(msg.poses)}"
             )
             return
-        self._pending_keypoints = keypoints
+        if not np.all(np.isfinite(keypoints)):
+            self._dropped_invalid += 1
+            self._last_error = "keypoints contain non-finite values"
+            self.get_logger().warning(f"ignored {self._keypoints_topic}: non-finite keypoints")
+            return
+        spread = float(np.max(np.ptp(keypoints, axis=0)))
+        self._last_keypoint_spread = spread
+        if spread < self._min_keypoint_spread:
+            self._dropped_invalid += 1
+            self._last_error = (
+                f"keypoint spread {spread:.4f}m < {self._min_keypoint_spread:.4f}m"
+            )
+            self.get_logger().warning(
+                f"ignored {self._keypoints_topic}: {self._last_error}"
+            )
+            return
+        self._latest_keypoints = keypoints
+        self._last_keypoints_time = time.monotonic()
 
     def _on_state(self, msg: JointState) -> None:
         if len(msg.position) != NUM_JOINTS:
             return
+        positions = np.asarray(msg.position, dtype=np.float32)
+        if not np.all(np.isfinite(positions)):
+            return
         first_feedback = self._last_feedback_time == 0.0
+        self._last_feedback_positions = positions
         self._last_feedback_time = time.monotonic()
         if first_feedback:
             self.get_logger().info(f"Received initial feedback from {self._state_topic}")
@@ -164,32 +281,214 @@ class WujiHandRetargetNode(Node):
         if now - self._last_wait_log_time > 2.0:
             self._last_wait_log_time = now
             self.get_logger().warning(f"Waiting for fresh feedback on {self._state_topic}")
+        self._last_status = "waiting_for_feedback"
+        self._pause_stream()
         return False
 
-    def _teleop_loop(self) -> None:
-        keypoints = self._pending_keypoints
-        self._pending_keypoints = None
-        if keypoints is None or not self._feedback_ready():
-            return
+    def _input_ready(self, now: float) -> bool:
+        if self._latest_keypoints is None:
+            if now - self._last_input_wait_log_time > 2.0:
+                self._last_input_wait_log_time = now
+                self.get_logger().warning(f"Waiting for keypoints on {self._keypoints_topic}")
+            self._last_status = "waiting_for_input"
+            self._pause_stream()
+            return False
+        age = now - self._last_keypoints_time
+        if age <= self._input_timeout:
+            return True
+        if now - self._last_input_wait_log_time > 2.0:
+            self._last_input_wait_log_time = now
+            self.get_logger().warning(
+                f"Stopping commands: keypoints on {self._keypoints_topic} are stale "
+                f"({age:.2f}s > {self._input_timeout:.2f}s)"
+            )
+        self._last_status = "input_timeout"
+        self._pause_stream()
+        return False
 
-        try:
-            positions = np.asarray(self._retargeter.retarget(keypoints), dtype=np.float32)
-        except Exception as exc:
-            self.get_logger().error(f"{self._side}-hand retarget failed: {exc}")
+    def _pause_stream(self) -> None:
+        if self._stream_paused:
             return
+        reset = getattr(self._retargeter, "reset", None)
+        if callable(reset):
+            reset()
+        self._stream_paused = True
+        self._ramp_start_time = None
+        self._ramp_start_positions = None
+        self._last_command_positions = None
+        self._last_command_time = None
 
+    def _resume_stream(self) -> None:
+        if not self._stream_paused:
+            return
+        self._stream_paused = False
+        self._ramp_start_time = None
+        self._ramp_start_positions = None
+        self._last_command_positions = None
+        self._last_command_time = None
+
+    def _shape_positions(self, positions: np.ndarray) -> Optional[np.ndarray]:
         if positions.shape == (5, 4):
             positions = positions.flatten()
         if positions.shape != (NUM_JOINTS,):
+            self._last_error = f"retarget returned shape {positions.shape}"
             self.get_logger().error(
                 f"retarget returned shape {positions.shape}, expected ({NUM_JOINTS},) or (5, 4)"
             )
+            return None
+        if not np.all(np.isfinite(positions)):
+            self._last_error = "retarget returned non-finite positions"
+            self.get_logger().error("retarget returned non-finite positions")
+            return None
+        return positions.astype(np.float32, copy=False)
+
+    def _retarget(self, keypoints: np.ndarray) -> Optional[np.ndarray]:
+        if self._retarget_verbose and hasattr(self._retargeter, "retarget_verbose"):
+            positions, verbose = self._retargeter.retarget_verbose(keypoints)
+            self._last_cost = verbose.get("cost")
+            pinch_alphas = verbose.get("pinch_alphas")
+            self._last_pinch_alphas = (
+                np.asarray(pinch_alphas, dtype=np.float32) if pinch_alphas is not None else None
+            )
+            return np.asarray(positions, dtype=np.float32)
+
+        self._last_cost = None
+        self._last_pinch_alphas = None
+        return np.asarray(self._retargeter.retarget(keypoints), dtype=np.float32)
+
+    def _apply_startup_ramp(self, desired: np.ndarray, now: float) -> np.ndarray:
+        if self._last_command_positions is not None or self._startup_ramp_sec == 0.0:
+            return desired
+
+        if self._ramp_start_time is None:
+            self._ramp_start_time = now
+            if self._last_feedback_positions is not None:
+                self._ramp_start_positions = self._last_feedback_positions.copy()
+            else:
+                self._ramp_start_positions = desired.copy()
+
+        if self._ramp_start_positions is None:
+            return desired
+
+        elapsed = now - self._ramp_start_time
+        alpha = min(max(elapsed / self._startup_ramp_sec, 0.0), 1.0)
+        alpha = alpha * alpha * alpha * (alpha * (alpha * 6.0 - 15.0) + 10.0)
+        if alpha < 1.0:
+            self._last_status = "startup_ramp"
+            return self._ramp_start_positions + alpha * (desired - self._ramp_start_positions)
+        return desired
+
+    def _apply_velocity_limit(self, desired: np.ndarray, now: float) -> np.ndarray:
+        if self._max_joint_velocity == 0.0:
+            return desired
+        if self._last_command_positions is None or self._last_command_time is None:
+            return desired
+
+        dt = min(max(now - self._last_command_time, 1.0 / self._control_rate_hz), 0.1)
+        max_step = self._max_joint_velocity * dt
+        delta = desired - self._last_command_positions
+        limited_delta = np.clip(delta, -max_step, max_step)
+        if np.any(np.abs(limited_delta - delta) > 1e-6):
+            self._limited_commands += 1
+            self._last_status = "velocity_limited"
+        return self._last_command_positions + limited_delta
+
+    def _clip_positions(self, positions: np.ndarray) -> np.ndarray:
+        if (
+            not self._clip_to_joint_limits
+            or self._joint_lower_limits is None
+            or self._joint_upper_limits is None
+        ):
+            return positions
+        clipped = np.clip(positions, self._joint_lower_limits, self._joint_upper_limits)
+        if np.any(np.abs(clipped - positions) > 1e-6):
+            self._limited_commands += 1
+            self._last_status = "joint_limit_clipped"
+        return clipped
+
+    def _teleop_loop(self) -> None:
+        now = time.monotonic()
+        if not self._input_ready(now) or not self._feedback_ready():
             return
+        self._resume_stream()
+
+        try:
+            t0 = time.perf_counter()
+            keypoints = self._latest_keypoints
+            if keypoints is None:
+                return
+            positions = self._retarget(keypoints)
+            self._last_retarget_ms = (time.perf_counter() - t0) * 1000.0
+        except Exception as exc:
+            self._last_error = str(exc)
+            self._last_status = "retarget_error"
+            self.get_logger().error(f"{self._side}-hand retarget failed: {exc}")
+            return
+
+        positions = self._shape_positions(positions)
+        if positions is None:
+            self._dropped_invalid += 1
+            return
+        self._last_status = "running"
+        positions = self._clip_positions(positions)
+        positions = self._apply_startup_ramp(positions, now)
+        positions = self._apply_velocity_limit(positions, now)
+        positions = self._clip_positions(positions)
 
         msg = JointState()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.position = positions.tolist()
-        self._cmd_pub.publish(msg)
+        if not self._dry_run:
+            self._cmd_pub.publish(msg)
+            self._commands_sent += 1
+
+        self._last_command_positions = positions.copy()
+        self._last_command_time = now
+        if self._last_status not in {"startup_ramp", "velocity_limited", "joint_limit_clipped"}:
+            self._last_status = "dry_run" if self._dry_run else "running"
+        self._last_error = ""
+
+    def _publish_diagnostics_msg(self) -> None:
+        now = time.monotonic()
+        keypoints_age = -1.0 if self._last_keypoints_time == 0.0 else now - self._last_keypoints_time
+        feedback_age = -1.0 if self._last_feedback_time == 0.0 else now - self._last_feedback_time
+
+        status = DiagnosticStatus()
+        status.name = f"wujihand_retarget_{self._side}"
+        status.hardware_id = self._hand_name
+        status.message = self._last_status
+        status.level = DiagnosticStatus.OK
+        if self._last_status in {"waiting_for_input", "waiting_for_feedback", "startup_ramp", "dry_run"}:
+            status.level = DiagnosticStatus.WARN
+        if self._last_status in {"input_timeout", "retarget_error"} or self._last_error:
+            status.level = DiagnosticStatus.ERROR
+        status.values = [
+            KeyValue(key="side", value=self._side),
+            KeyValue(key="keypoints_topic", value=self._keypoints_topic),
+            KeyValue(key="command_topic", value=self._command_topic),
+            KeyValue(key="state_topic", value=self._state_topic),
+            KeyValue(key="keypoints_age_sec", value=f"{keypoints_age:.3f}"),
+            KeyValue(key="feedback_age_sec", value=f"{feedback_age:.3f}"),
+            KeyValue(key="last_retarget_ms", value=f"{self._last_retarget_ms:.3f}"),
+            KeyValue(key="last_cost", value="" if self._last_cost is None else f"{self._last_cost:.6f}"),
+            KeyValue(
+                key="pinch_alphas",
+                value="" if self._last_pinch_alphas is None else ",".join(
+                    f"{value:.3f}" for value in self._last_pinch_alphas.tolist()
+                ),
+            ),
+            KeyValue(key="last_keypoint_spread_m", value=f"{self._last_keypoint_spread:.4f}"),
+            KeyValue(key="commands_sent", value=str(self._commands_sent)),
+            KeyValue(key="limited_commands", value=str(self._limited_commands)),
+            KeyValue(key="dropped_invalid", value=str(self._dropped_invalid)),
+            KeyValue(key="dry_run", value=str(self._dry_run).lower()),
+            KeyValue(key="last_error", value=self._last_error),
+        ]
+
+        msg = DiagnosticArray()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.status.append(status)
+        self._diag_pub.publish(msg)
 
 
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:

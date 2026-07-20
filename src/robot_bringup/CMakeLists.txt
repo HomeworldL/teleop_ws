@@ -13,6 +13,12 @@ install(PROGRAMS
   RENAME joint_state_aggregator
 )
 
+install(PROGRAMS
+  scripts/dummy_driver.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME dummy_driver
+)
+
 install(DIRECTORY
   config
   launch

@@ -84,6 +84,46 @@ def _retarget_node(side: str, hand_name, keypoints_topic, enable):
                     LaunchConfiguration("feedback_timeout"),
                     value_type=float,
                 ),
+                "input_timeout": ParameterValue(
+                    LaunchConfiguration("input_timeout"),
+                    value_type=float,
+                ),
+                "startup_ramp_sec": ParameterValue(
+                    LaunchConfiguration("startup_ramp_sec"),
+                    value_type=float,
+                ),
+                "max_joint_velocity": ParameterValue(
+                    LaunchConfiguration("max_joint_velocity"),
+                    value_type=float,
+                ),
+                "dry_run": ParameterValue(
+                    LaunchConfiguration("dry_run"),
+                    value_type=bool,
+                ),
+                "publish_diagnostics": ParameterValue(
+                    LaunchConfiguration("publish_diagnostics"),
+                    value_type=bool,
+                ),
+                "diagnostics_rate": ParameterValue(
+                    LaunchConfiguration("diagnostics_rate"),
+                    value_type=float,
+                ),
+                "nlopt_max_eval": ParameterValue(
+                    LaunchConfiguration("nlopt_max_eval"),
+                    value_type=int,
+                ),
+                "min_keypoint_spread": ParameterValue(
+                    LaunchConfiguration("min_keypoint_spread"),
+                    value_type=float,
+                ),
+                "clip_to_joint_limits": ParameterValue(
+                    LaunchConfiguration("clip_to_joint_limits"),
+                    value_type=bool,
+                ),
+                "retarget_verbose": ParameterValue(
+                    LaunchConfiguration("retarget_verbose"),
+                    value_type=bool,
+                ),
             }
         ],
         condition=IfCondition(enable),
@@ -116,6 +156,16 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("control_rate", default_value="120.0"),
             DeclareLaunchArgument("require_feedback", default_value="true"),
             DeclareLaunchArgument("feedback_timeout", default_value="1.0"),
+            DeclareLaunchArgument("input_timeout", default_value="0.3"),
+            DeclareLaunchArgument("startup_ramp_sec", default_value="0.5"),
+            DeclareLaunchArgument("max_joint_velocity", default_value="3.14"),
+            DeclareLaunchArgument("dry_run", default_value="false"),
+            DeclareLaunchArgument("publish_diagnostics", default_value="true"),
+            DeclareLaunchArgument("diagnostics_rate", default_value="2.0"),
+            DeclareLaunchArgument("nlopt_max_eval", default_value="25"),
+            DeclareLaunchArgument("min_keypoint_spread", default_value="0.01"),
+            DeclareLaunchArgument("clip_to_joint_limits", default_value="true"),
+            DeclareLaunchArgument("retarget_verbose", default_value="false"),
             _retarget_node("left", left_hand_name, left_keypoints_topic, enable_left),
             _retarget_node("right", right_hand_name, right_keypoints_topic, enable_right),
         ]

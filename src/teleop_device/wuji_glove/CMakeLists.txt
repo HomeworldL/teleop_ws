@@ -12,6 +12,7 @@ install(
   PROGRAMS
     scripts/wuji_glove_node
     scripts/wuji_glove_scan
+    scripts/wuji_glove_verify
   DESTINATION lib/${PROJECT_NAME}
 )
 
