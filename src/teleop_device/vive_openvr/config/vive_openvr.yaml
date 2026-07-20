@@ -8,8 +8,8 @@
 # later when switching from incremental control to body-frame control.
 tracker_serials:
   left_wrist: "LHR-E651F39A"
-  right_wrist: ""
-  # chest: ""
+  right_wrist: "LHR-F757F16E"
+  chest: "LHR-F854821A"
   # left_arm: ""
   # right_arm: ""
 

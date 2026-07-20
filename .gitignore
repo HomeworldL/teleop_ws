@@ -5,6 +5,8 @@ bin/
 lib/
 !src/marvin_ros2/marvin_driver/vendor/contrlSDK/lib/
 !src/marvin_ros2/marvin_driver/vendor/contrlSDK/lib/libMarvinSDK.so
+!src/teleop_algorithm/vive_marvin_teleop/vive_marvin_teleop/_internal/lib/
+!src/teleop_algorithm/vive_marvin_teleop/vive_marvin_teleop/_internal/lib/libKine.so
 msg_gen/
 srv_gen/
 msg/*Action.msg

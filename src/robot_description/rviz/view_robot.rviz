@@ -633,9 +633,9 @@ Visualization Manager:
       Frames:
         All Enabled: false
         Base_L:
-          Value: false
+          Value: true
         Base_R:
-          Value: false
+          Value: true
         Link1_L:
           Value: false
         Link1_R:
@@ -661,9 +661,9 @@ Visualization Manager:
         Link6_R:
           Value: false
         Link7_L:
-          Value: false
+          Value: true
         Link7_R:
-          Value: false
+          Value: true
         base_link:
           Value: false
         head_camera_accel_frame:
@@ -751,7 +751,7 @@ Visualization Manager:
         left_hand_docking_link:
           Value: false
         left_palm_link:
-          Value: false
+          Value: true
         left_wrist_camera_accel_frame:
           Value: false
         left_wrist_camera_accel_optical_frame:
@@ -783,7 +783,7 @@ Visualization Manager:
         lift_platform_link:
           Value: false
         right_camera_adapter_link:
-          Value: true
+          Value: false
         right_finger1_link1:
           Value: false
         right_finger1_link2:
@@ -839,17 +839,17 @@ Visualization Manager:
         right_hand_docking_link:
           Value: false
         right_palm_link:
-          Value: false
+          Value: true
         right_wrist_camera_accel_frame:
           Value: false
         right_wrist_camera_accel_optical_frame:
           Value: false
         right_wrist_camera_bottom_screw_frame:
-          Value: true
+          Value: false
         right_wrist_camera_color_frame:
           Value: false
         right_wrist_camera_color_optical_frame:
-          Value: true
+          Value: false
         right_wrist_camera_depth_frame:
           Value: false
         right_wrist_camera_depth_optical_frame:
@@ -868,7 +868,7 @@ Visualization Manager:
           Value: false
         right_wrist_camera_link:
           Value: false
-      Marker Scale: 0.30000001192092896
+      Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
@@ -1070,25 +1070,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 2.8629074096679688
+      Distance: 1.1032665967941284
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.5751805305480957
-        Y: 0.03836017847061157
-        Z: 0.8422543406486511
+        X: 0.7195776104927063
+        Y: 0.03967803716659546
+        Z: 0.9253479838371277
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.2897973656654358
+      Pitch: 0.34979674220085144
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.06860202550888062
+      Yaw: 5.981777667999268
     Saved: ~
 Window Geometry:
   Displays:
@@ -1106,5 +1106,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1850
-  X: 70
-  Y: 27
+  X: 450
+  Y: 319

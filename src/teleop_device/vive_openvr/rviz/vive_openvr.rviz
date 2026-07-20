@@ -8,7 +8,7 @@ Panels:
         - /Status1
         - /TF1
       Splitter Ratio: 0.5
-    Tree Height: 559
+    Tree Height: 671
   - Class: rviz_common/Views
     Expanded:
       - /Current View1
@@ -23,7 +23,7 @@ Visualization Manager:
       Color: 160; 160; 164
       Enabled: true
       Line Style:
-        Line Width: 0.03
+        Line Width: 0.029999999329447746
         Value: Lines
       Name: Grid
       Normal Cell Count: 0
@@ -40,68 +40,317 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-      Marker Scale: 0.2
+        Base_L:
+          Value: true
+        Base_R:
+          Value: true
+        Link1_L:
+          Value: true
+        Link1_R:
+          Value: true
+        Link2_L:
+          Value: true
+        Link2_R:
+          Value: true
+        Link3_L:
+          Value: true
+        Link3_R:
+          Value: true
+        Link4_L:
+          Value: true
+        Link4_R:
+          Value: true
+        Link5_L:
+          Value: true
+        Link5_R:
+          Value: true
+        Link6_L:
+          Value: true
+        Link6_R:
+          Value: true
+        Link7_L:
+          Value: true
+        Link7_R:
+          Value: true
+        base_link:
+          Value: true
+        head_camera_accel_frame:
+          Value: true
+        head_camera_accel_optical_frame:
+          Value: true
+        head_camera_bottom_screw_frame:
+          Value: true
+        head_camera_color_frame:
+          Value: true
+        head_camera_color_optical_frame:
+          Value: true
+        head_camera_depth_frame:
+          Value: true
+        head_camera_depth_optical_frame:
+          Value: true
+        head_camera_gyro_frame:
+          Value: true
+        head_camera_gyro_optical_frame:
+          Value: true
+        head_camera_infra1_frame:
+          Value: true
+        head_camera_infra1_optical_frame:
+          Value: true
+        head_camera_infra2_frame:
+          Value: true
+        head_camera_infra2_optical_frame:
+          Value: true
+        head_camera_link:
+          Value: true
+        left_camera_adapter_link:
+          Value: true
+        left_finger1_link1:
+          Value: true
+        left_finger1_link2:
+          Value: true
+        left_finger1_link2_softbody:
+          Value: true
+        left_finger1_link3:
+          Value: true
+        left_finger1_link4:
+          Value: true
+        left_finger1_tip_link:
+          Value: true
+        left_finger2_link1:
+          Value: true
+        left_finger2_link2:
+          Value: true
+        left_finger2_link3:
+          Value: true
+        left_finger2_link4:
+          Value: true
+        left_finger2_tip_link:
+          Value: true
+        left_finger3_link1:
+          Value: true
+        left_finger3_link2:
+          Value: true
+        left_finger3_link3:
+          Value: true
+        left_finger3_link4:
+          Value: true
+        left_finger3_tip_link:
+          Value: true
+        left_finger4_link1:
+          Value: true
+        left_finger4_link2:
+          Value: true
+        left_finger4_link3:
+          Value: true
+        left_finger4_link4:
+          Value: true
+        left_finger4_tip_link:
+          Value: true
+        left_finger5_link1:
+          Value: true
+        left_finger5_link2:
+          Value: true
+        left_finger5_link3:
+          Value: true
+        left_finger5_link4:
+          Value: true
+        left_finger5_tip_link:
+          Value: true
+        left_hand_docking_link:
+          Value: true
+        left_palm_link:
+          Value: true
+        left_wrist_camera_accel_frame:
+          Value: true
+        left_wrist_camera_accel_optical_frame:
+          Value: true
+        left_wrist_camera_bottom_screw_frame:
+          Value: true
+        left_wrist_camera_color_frame:
+          Value: true
+        left_wrist_camera_color_optical_frame:
+          Value: true
+        left_wrist_camera_depth_frame:
+          Value: true
+        left_wrist_camera_depth_optical_frame:
+          Value: true
+        left_wrist_camera_gyro_frame:
+          Value: true
+        left_wrist_camera_gyro_optical_frame:
+          Value: true
+        left_wrist_camera_infra1_frame:
+          Value: true
+        left_wrist_camera_infra1_optical_frame:
+          Value: true
+        left_wrist_camera_infra2_frame:
+          Value: true
+        left_wrist_camera_infra2_optical_frame:
+          Value: true
+        left_wrist_camera_link:
+          Value: true
+        lift_platform_link:
+          Value: true
+        right_camera_adapter_link:
+          Value: true
+        right_finger1_link1:
+          Value: true
+        right_finger1_link2:
+          Value: true
+        right_finger1_link2_softbody:
+          Value: true
+        right_finger1_link3:
+          Value: true
+        right_finger1_link4:
+          Value: true
+        right_finger1_tip_link:
+          Value: true
+        right_finger2_link1:
+          Value: true
+        right_finger2_link2:
+          Value: true
+        right_finger2_link3:
+          Value: true
+        right_finger2_link4:
+          Value: true
+        right_finger2_tip_link:
+          Value: true
+        right_finger3_link1:
+          Value: true
+        right_finger3_link2:
+          Value: true
+        right_finger3_link3:
+          Value: true
+        right_finger3_link4:
+          Value: true
+        right_finger3_tip_link:
+          Value: true
+        right_finger4_link1:
+          Value: true
+        right_finger4_link2:
+          Value: true
+        right_finger4_link3:
+          Value: true
+        right_finger4_link4:
+          Value: true
+        right_finger4_tip_link:
+          Value: true
+        right_finger5_link1:
+          Value: true
+        right_finger5_link2:
+          Value: true
+        right_finger5_link3:
+          Value: true
+        right_finger5_link4:
+          Value: true
+        right_finger5_tip_link:
+          Value: true
+        right_hand_docking_link:
+          Value: true
+        right_palm_link:
+          Value: true
+        right_wrist_camera_accel_frame:
+          Value: true
+        right_wrist_camera_accel_optical_frame:
+          Value: true
+        right_wrist_camera_bottom_screw_frame:
+          Value: true
+        right_wrist_camera_color_frame:
+          Value: true
+        right_wrist_camera_color_optical_frame:
+          Value: true
+        right_wrist_camera_depth_frame:
+          Value: true
+        right_wrist_camera_depth_optical_frame:
+          Value: true
+        right_wrist_camera_gyro_frame:
+          Value: true
+        right_wrist_camera_gyro_optical_frame:
+          Value: true
+        right_wrist_camera_infra1_frame:
+          Value: true
+        right_wrist_camera_infra1_optical_frame:
+          Value: true
+        right_wrist_camera_infra2_frame:
+          Value: true
+        right_wrist_camera_infra2_optical_frame:
+          Value: true
+        right_wrist_camera_link:
+          Value: true
+        vive/chest:
+          Value: true
+        vive/right_wrist:
+          Value: true
+        vive_world:
+          Value: true
+      Marker Scale: 0.20000000298023224
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        vive_world:
+          vive/chest:
+            {}
+          vive/right_wrist:
+            {}
       Update Interval: 0
       Value: true
     - Alpha: 1
-      Axes Length: 0.18
-      Axes Radius: 0.01
+      Axes Length: 0.18000000715255737
+      Axes Radius: 0.009999999776482582
       Class: rviz_default_plugins/Pose
       Color: 255; 64; 64
       Enabled: true
-      Head Length: 0.08
-      Head Radius: 0.025
+      Head Length: 0.07999999821186066
+      Head Radius: 0.02500000037252903
       Name: Left Wrist Pose
-      Shaft Length: 0.12
-      Shaft Radius: 0.01
+      Shaft Length: 0.11999999731779099
+      Shaft Radius: 0.009999999776482582
       Shape: Axes
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /vive/left_wrist/pose
       Value: true
     - Alpha: 1
-      Axes Length: 0.18
-      Axes Radius: 0.01
+      Axes Length: 0.18000000715255737
+      Axes Radius: 0.009999999776482582
       Class: rviz_default_plugins/Pose
       Color: 64; 128; 255
       Enabled: true
-      Head Length: 0.08
-      Head Radius: 0.025
+      Head Length: 0.07999999821186066
+      Head Radius: 0.02500000037252903
       Name: Right Wrist Pose
-      Shaft Length: 0.12
-      Shaft Radius: 0.01
+      Shaft Length: 0.11999999731779099
+      Shaft Radius: 0.009999999776482582
       Shape: Axes
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /vive/right_wrist/pose
       Value: true
     - Alpha: 1
-      Axes Length: 0.22
-      Axes Radius: 0.012
+      Axes Length: 0.2199999988079071
+      Axes Radius: 0.012000000104308128
       Class: rviz_default_plugins/Pose
       Color: 64; 220; 120
       Enabled: true
-      Head Length: 0.1
-      Head Radius: 0.03
+      Head Length: 0.10000000149011612
+      Head Radius: 0.029999999329447746
       Name: Chest Pose
-      Shaft Length: 0.14
-      Shaft Radius: 0.012
+      Shaft Length: 0.14000000059604645
+      Shaft Radius: 0.012000000104308128
       Shape: Axes
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /vive/chest/pose
@@ -109,7 +358,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 30; 30; 32
-    Fixed Frame: vive_world
+    Fixed Frame: vive/chest
     Frame Rate: 30
   Name: root
   Tools:
@@ -127,25 +376,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 2.2
+      Distance: 2.076510190963745
       Enable Stereo Rendering:
-        Stereo Eye Separation: 0.06
+        Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0.8
+        X: 0.3097742199897766
+        Y: 0.07581695169210434
+        Z: 0.2917909622192383
       Focal Shape Fixed Size: true
-      Focal Shape Size: 0.05
+      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
-      Near Clip Distance: 0.01
-      Pitch: 0.55
+      Near Clip Distance: 0.009999999776482582
+      Pitch: 0.9749996662139893
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz_default_plugins)
-      Yaw: 0.75
+      Yaw: 4.808189392089844
     Saved: ~
 Window Geometry:
   Displays:
@@ -153,7 +402,7 @@ Window Geometry:
   Height: 900
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd00000002000000000000023f0000034dfc0200000001fb000000100044006900730070006c006100790073010000003d0000034d000000c900ffffff0000000300000640000000bdfc0100000001fb0000000a00560069006500770073000000003d000000bd000000a400ffffff000004010000034d00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000002000000000000023f0000032afc0200000001fb000000100044006900730070006c006100790073010000003d0000032a000000c900ffffff0000000300000640000000bdfc0100000001fb0000000a00560069006500770073000000003d000000bd0000010000ffffff000003fb0000032a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1600
