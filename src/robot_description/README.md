@@ -6,6 +6,17 @@ Top-level robot description package for the teleoperation robot. This package ow
 
 The composed robot is defined in `urdf/robot.xacro` and expanded to `urdf/robot.urdf`.
 
+`robot_description` is the main description entry point for the workspace. It
+composes the resource packages under `src/` into the final robot model:
+
+- `marvin_description`: left and right Marvin M6-S arm URDFs and meshes.
+- `wuji_description`: left and right Wuji hand URDFs, meshes, and hand-only MJCF
+  resources.
+- `realsense2_description`: RealSense camera xacro models and meshes.
+
+The final package adds the shared base, lift platform, hand adapters, camera
+adapters, expanded URDF, RViz config, and MuJoCo scene.
+
 Configuration:
 
 - Base: `base_link` chassis plus fixed `lift_platform_link`.
@@ -41,6 +52,14 @@ Use these link frames as stable references for later teleoperation mapping:
 - `left_wrist_camera_color_optical_frame`, `right_wrist_camera_color_optical_frame`: wrist RGB optical frames.
 
 For ROS optical frames, use the standard camera convention: `+X` right, `+Y` down, `+Z` forward. In the MuJoCo XML, cameras are created under the corresponding `*_color_optical_frame` and rotated back to the OpenGL/MuJoCo camera convention where `+Z` points backward.
+
+The Vive-to-Marvin arm teleoperation node does not consume these URDF links as
+its IK target interface. `vive_marvin_teleop` sends transforms named
+`left_chest -> tianji_left` and `right_chest -> tianji_right` into the Marvin
+SDK IK wrapper. Those `tianji_*` frames follow the SDK TCP/flange convention,
+not `left_palm_link` or `right_palm_link`. Use the URDF links for visualization
+and calibration reference, then adjust tracker-to-TCP alignment in
+`vive_marvin_teleop/config/static_transforms.yaml`.
 
 ## Vision
 
@@ -88,8 +107,22 @@ For zsh:
 source install/setup.zsh
 ```
 
+Regenerate the expanded URDF from xacro:
+
+```bash
+xacro src/robot_description/urdf/robot.xacro > src/robot_description/urdf/robot.urdf
+```
+
 Run the MuJoCo scene:
 
 ```bash
 conda run -n floating python src/robot_description/mjcf/scene.py
+```
+
+Render only selected cameras:
+
+```bash
+conda run -n floating python src/robot_description/mjcf/scene.py \
+  --camera head_camera \
+  --camera left_wrist_camera
 ```

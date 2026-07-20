@@ -3,6 +3,54 @@
 `wujihand_teleop` only retargets Wuji Glove keypoints into Wuji Hand joint
 commands. It does not connect to the gloves or to the hand hardware.
 
+## Python Environment
+
+This package depends on Python IK/optimization libraries. Keep the ROS workspace
+build in the system ROS environment; use a dedicated Miniconda runtime
+environment when launching the retargeting node.
+
+Recommended setup for ROS 2 Humble on Ubuntu 22.04:
+
+```bash
+conda create -n teleop python=3.10
+conda activate teleop
+
+# Install Pinocchio first from conda-forge. Avoid installing a mismatched pip
+# pinocchio/pin package before this step.
+conda install -c conda-forge pinocchio
+
+# Then install the remaining Python runtime dependencies with pip.
+python -m pip install numpy scipy pyyaml nlopt
+
+# Install the latest official wuji-retargeting from GitHub.
+python -m pip install git+https://github.com/wuji-technology/wuji-retargeting.git
+```
+
+Check the runtime environment:
+
+```bash
+python - <<'PY'
+import pinocchio
+import nlopt
+import numpy
+from wuji_retargeting import Retargeter
+print("wujihand teleop Python environment OK")
+PY
+```
+
+Launch from that environment after sourcing ROS and this workspace:
+
+```bash
+conda activate teleop
+source /opt/ros/humble/setup.bash
+source /home/ccs/ros2/teleop_ws/install/setup.bash
+ros2 launch wujihand_teleop wujihand_retarget.launch.py
+```
+
+The launch file prepends the active `CONDA_PREFIX` site-packages and cmeel
+library paths for the retargeting process. The current workspace setup is
+bare-metal ROS plus this conda runtime, not the upstream Docker workflow.
+
 ## Data Flow
 
 ```text
@@ -122,6 +170,22 @@ ros2 topic hz /hand_left/joint_states
 ros2 topic hz /hand_left/joint_commands
 ros2 topic echo /wujihand_teleop/left/diagnostics
 ```
+
+## Runtime Notes
+
+- This package does not launch `wuji_glove`, `wujihand_driver`, or
+  `robot_bringup`. Start input devices and robot-side drivers separately.
+- With the default `require_feedback:=true`, no command is published until the
+  matching `/hand_*/joint_states` topic is fresh. In dummy tests, start
+  `robot_bringup bringup_dummy.launch.py` so the feedback gate can open.
+- If keypoints stop updating for longer than `input_timeout`, command output
+  stops. This is expected and prevents stale glove poses from continuing to
+  drive the hand.
+- Use `dry_run:=true` when tuning retargeting parameters. Diagnostics continue
+  to publish, but `/hand_*/joint_commands` remains silent.
+- The node commands the Wuji Hand joint names used by the retargeting URDF and
+  the hand driver. If command messages appear but the hand does not move, check
+  that the driver side namespace is `/hand_left` or `/hand_right` as expected.
 
 ## Dependencies
 

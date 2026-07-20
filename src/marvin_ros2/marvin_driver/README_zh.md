@@ -29,6 +29,44 @@
 
 第一版 driver 的目标是遥操作和基础设备检查，因此暂时没有加入这些功能。
 
+`marvin_joint_control_ui.py` 这类人工操作工具放在 `marvin_bringup`，因为它只通过 ROS
+话题交互，不链接 SDK。
+
+## 话题布局
+
+launch 文件默认把节点放在 `marvin` namespace 下。
+
+反馈话题：
+
+```text
+/marvin/left/joint_states
+/marvin/right/joint_states
+```
+
+命令话题：
+
+```text
+/marvin/left/joint_commands
+/marvin/right/joint_commands
+```
+
+命令和反馈都使用 `sensor_msgs/msg/JointState`。ROS 侧位置和速度单位是弧度/弧度每秒，
+driver 内部会和 SDK 的角度制 API 互相转换。
+
+driver 有意不发布全局 `/joint_states`。全局状态流由 `robot_bringup` 里的整机聚合器负责。
+
+## 关节名
+
+默认关节名和 Marvin URDF 一致：
+
+```text
+Joint1_L ... Joint7_L
+Joint1_R ... Joint7_R
+```
+
+如果命令消息的 `name` 字段为空，前 7 个 position 会按上述顺序解释。如果带有 name，
+则必须包含该臂配置中的全部关节名。
+
 ## 控制模式
 
 driver 支持三种 launch-time 模式：
@@ -95,3 +133,28 @@ driver 启动时不会发送任何默认关节命令。它只会：
 ros2 run marvin_driver marvin_link_check_node --ros-args -p robot_ip:=192.168.1.190
 ros2 run marvin_driver marvin_cmd_delay_check_node --ros-args -p robot_ip:=192.168.1.190 -p arm:=A
 ```
+
+## 服务
+
+默认 namespace 下：
+
+```text
+/marvin/connect
+/marvin/release
+/marvin/estop
+/marvin/left/disable
+/marvin/right/disable
+```
+
+所有服务当前都使用 `std_srvs/srv/Trigger`。
+
+## 遥操作注意
+
+- Vive 机械臂遥操作当前优先使用 `marvin_impedance.launch.py` bringup 路径，让命令流运行在
+  显式的关节阻抗模式下。
+- SDK 连接保持独占。`marvin_driver_node` 已连接时，不要同时运行 MarvinPlatform、SDK demo、
+  check node 或第二个 `marvin_driver_node`。
+- driver 反馈发布到 `/marvin/left/joint_states` 和 `/marvin/right/joint_states`；全局
+  `/joint_states` 不由这个 driver 负责。
+- 遥操作算法必须先等待新鲜反馈，并用实测机械臂状态初始化第一帧命令。在没有反馈时发布目标是
+  控制层错误。

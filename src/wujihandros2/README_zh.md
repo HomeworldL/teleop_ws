@@ -6,6 +6,20 @@
 
 **快速上手见 [Quick Start](#quick-start)。详细文档请参考 Wuji Docs Center 上的 [ROS2 Tutorial](https://docs.wuji.tech/docs/en/wuji-hand/latest/ros2-user-guide/index)。**
 
+## 当前工作区说明
+
+这个目录已作为普通源码包导入 `/home/ccs/ros2/teleop_ws`。在当前工作区中，整机启动使用
+`robot_bringup`，手套到灵巧手的重定向使用 `wujihand_teleop`。
+
+和全新上游 checkout 相比，当前工作区有这些本地差异：
+
+- 不使用上游嵌套 `.git` 元数据和 submodule 元数据。
+- 手部模型从当前工作区的 `wuji_description` 包解析。
+- 手部 driver 反馈保持在 `/hand_left/joint_states` 和 `/hand_right/joint_states`
+  这类设备级话题下。
+- 全局 `/joint_states` 由 `robot_bringup` 发布，不由 hand driver 直接发布。
+- 实时遥操作时，hand driver 应是唯一连接手硬件的进程。启动主 driver 前先停止 demo 和诊断工具。
+
 | ROS2 版本 | Ubuntu | 构建状态 | Deb 包 |
 |:------------:|:------:|:------------:|:-----------:|
 | Humble | 22.04 | [![CI](https://github.com/wuji-technology/wujihandros2/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/wuji-technology/wujihandros2/actions/workflows/ci.yml) | [Download](https://github.com/wuji-technology/wujihandros2/releases) |

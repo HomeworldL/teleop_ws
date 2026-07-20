@@ -6,6 +6,24 @@ ROS2 driver package for Wuji Hand dexterous hand. Provides 1000Hz joint state pu
 
 **Get started with [Quick Start](#quick-start). For detailed documentation, please refer to [ROS2 Tutorial](https://docs.wuji.tech/docs/en/wuji-hand/latest/ros2-user-guide/index) on Wuji Docs Center.**
 
+## Local Workspace Notes
+
+This directory was imported into `/home/ccs/ros2/teleop_ws` as normal source
+packages. In this workspace, use `robot_bringup` for whole-robot startup and
+`wujihand_teleop` for glove-to-hand retargeting.
+
+Important local differences from a fresh upstream checkout:
+
+- The upstream nested `.git` metadata and submodule metadata are not used here.
+- The hand model is resolved from the workspace `wuji_description` package.
+- Hand driver feedback remains device-scoped under `/hand_left/joint_states`
+  and `/hand_right/joint_states`.
+- The global `/joint_states` stream is published by `robot_bringup`, not by the
+  hand driver directly.
+- The driver package should be the only process connected to the hand hardware
+  during live teleoperation. Stop demos and diagnostic tools before starting the
+  main driver.
+
 | ROS2 Version | Ubuntu | Build Status | Deb Package |
 |:------------:|:------:|:------------:|:-----------:|
 | Humble | 22.04 | [![CI](https://github.com/wuji-technology/wujihandros2/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/wuji-technology/wujihandros2/actions/workflows/ci.yml) | [Download](https://github.com/wuji-technology/wujihandros2/releases) |

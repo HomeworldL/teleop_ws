@@ -74,3 +74,18 @@ ros2 launch robot_bringup bringup_real.launch.py rviz:=false
 ```bash
 ros2 launch robot_bringup bringup_real.launch.py hands:=false
 ```
+
+## 运行注意
+
+- `robot_bringup` 不启动遥操作输入包或算法包。需要遥操作时，单独启动 `wuji_glove`、
+  `vive_openvr`、`wujihand_teleop` 和 `vive_marvin_teleop`。
+- 全局 `/joint_states` 只给 `robot_state_publisher` 和 RViz 使用。底层 driver 和遥操作算法
+  应使用 `/marvin/right/joint_states`、`/hand_right/joint_commands` 这类设备级话题。
+- dummy bringup 会把命令话题直接镜像成反馈话题，适合做可视化和话题链路检查，但不能验证真实
+  电机模式、控制器限位或硬件时序。
+- 真实 bringup 默认 Marvin 位置模式。Vive 机械臂遥操作当前优先传入
+  `marvin_launch:=marvin_impedance.launch.py`。
+- 真实硬件只测机械臂时，使用 `hands:=false` 避免启动 Wuji hand driver。只测灵巧手时，保持
+  机械臂遥操作 disabled，并忽略 `/marvin/*` 命令话题。
+- 如果 RViz 不动，先查各设备反馈，再查 `/joint_states`。缺失设备反馈时，组合模型对应部分会
+  保持零位。

@@ -1,6 +1,13 @@
 # vive_marvin_teleop
 
-`vive_marvin_teleop` 使用 3 个 Vive Tracker 做 Marvin 双臂胸腔坐标系遥操作：
+`vive_marvin_teleop` 把 Vive chest/wrist tracker TF 映射为 Marvin 机械臂 TCP
+目标，使用 vendored Marvin 运动学 SDK 解 IK，并发布单臂关节命令。
+
+这个包是遥操作算法包。它不连接 SteamVR，也不直接连接 Marvin 控制器。
+
+## tracker 角色
+
+当前三 tracker 配置：
 
 ```yaml
 left_wrist:  "LHR-E651F39A"
@@ -8,57 +15,181 @@ right_wrist: "LHR-F757F16E"
 chest:       "LHR-F854821A"
 ```
 
-数据流：
+`vive_openvr` 会把它们发布为 `vive_world` 下的 TF：
+
+```text
+vive_world -> vive/chest
+vive_world -> vive/left_wrist
+vive_world -> vive/right_wrist
+```
+
+## 数据流
 
 ```text
 vive_openvr TF
-  -> left_chest/right_chest 坐标对齐
-  -> tianji_left/tianji_right 末端目标
+  -> chest 和 wrist 静态对齐 TF
+  -> left_chest/right_chest 参考坐标系
+  -> tianji_left/tianji_right SDK TCP 目标坐标系
   -> Marvin IK
   -> /marvin/left/joint_commands
   -> /marvin/right/joint_commands
 ```
 
-节点默认不发命令。启动后调用：
+默认命令输出：
+
+```text
+/marvin/left/joint_commands
+/marvin/right/joint_commands
+```
+
+默认反馈输入：
+
+```text
+/marvin/left/joint_states
+/marvin/right/joint_states
+```
+
+节点启动后默认禁用，不会发布命令，需要手动 enable。
+
+## 坐标系
+
+`vive_openvr` 的 tracker pose 全部位于 SteamVR standing space。这个包不把
+`vive_world` 当机器人基座，而是用胸口 tracker 作为人体参考，再通过静态 TF 做对齐：
+
+```text
+vive/chest -> left_chest_base -> left_chest
+vive/chest -> right_chest_base -> right_chest
+vive/left_wrist -> tianji_left
+vive/right_wrist -> tianji_right
+```
+
+含义：
+
+- `vive/chest`：经过 `vive_openvr` 角色修正后的胸口 tracker frame。
+- `left_chest_base` 和 `right_chest_base`：每侧机械臂自己的胸口安装偏移和旋转，用来把人体胸口 frame 对齐到 Marvin IK 约定。
+- `left_chest` 和 `right_chest`：每条臂解 IK 时使用的参考 frame。
+- `vive/left_wrist` 和 `vive/right_wrist`：经过角色修正后的手腕 tracker frame。
+- `tianji_left` 和 `tianji_right`：送入 Marvin SDK IK 的目标 TCP frame。
+
+实际控制使用的变换是：
+
+```text
+left_chest  -> tianji_left
+right_chest -> tianji_right
+```
+
+Marvin IK 目标是官方 Tianji arm 代码路径使用的 SDK TCP/法兰约定，不是 Wuji 手掌
+URDF link。如果 tracker 安装方向或期望工具点不对，优先改
+`config/static_transforms.yaml`，尤其是 `wrist_to_tianji`，不要在控制循环里临时手写旋转。
+
+## 启动顺序
+
+先启动机器人侧 bringup。没有硬件时推荐先跑 dummy：
+
+```bash
+cd /home/ccs/ros2/teleop_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch robot_bringup bringup_dummy.launch.py
+```
+
+真实 Marvin 硬件实时遥操作当前优先使用关节阻抗模式：
+
+```bash
+ros2 launch robot_bringup bringup_real.launch.py \
+  marvin_launch:=marvin_impedance.launch.py
+```
+
+启动 Vive 输入：
+
+```bash
+ros2 launch vive_openvr vive_openvr.launch.py rviz:=true
+```
+
+启动机械臂遥操作：
+
+```bash
+ros2 launch vive_marvin_teleop vive_marvin_teleop.launch.py
+```
+
+确认反馈和 TF 都正常后再打开命令输出：
 
 ```bash
 ros2 service call /vive_marvin_teleop/set_enabled std_srvs/srv/SetBool "{data: true}"
 ```
 
-停止：
+关闭命令输出：
 
 ```bash
 ros2 service call /vive_marvin_teleop/set_enabled std_srvs/srv/SetBool "{data: false}"
 ```
 
-单独启动：
+## 检查
+
+tracker 数据：
 
 ```bash
-ros2 launch vive_marvin_teleop vive_marvin_teleop.launch.py
+ros2 run vive_openvr list_trackers --all
+ros2 topic echo --once /vive/chest/pose
+ros2 topic echo --once /vive/left_wrist/pose
+ros2 topic echo --once /vive/right_wrist/pose
 ```
 
-推荐启动顺序是硬件/dummy bringup 和 teleop 分开启动。先启动机械臂侧：
+TF 链：
 
 ```bash
-ros2 launch robot_bringup bringup_dummy.launch.py
+ros2 run tf2_ros tf2_echo vive/chest right_chest
+ros2 run tf2_ros tf2_echo left_chest tianji_left
+ros2 run tf2_ros tf2_echo right_chest tianji_right
 ```
 
-或实机侧：
+Marvin 反馈和命令：
 
 ```bash
-ros2 launch robot_bringup bringup_real.launch.py \
-  marvin_launch:=marvin_impedance_pd.launch.py
+ros2 topic hz /marvin/right/joint_states
+ros2 topic hz /marvin/right/joint_commands
+ros2 topic echo /marvin/right/joint_commands
 ```
 
-然后分别启动 Vive Tracker 输入和 arm teleop：
+如果三个 tracker pose topic 都有数据但机械臂 command topic 没数据，按顺序查：
 
-```bash
-ros2 launch vive_openvr vive_openvr.launch.py rviz:=true
-ros2 launch vive_marvin_teleop vive_marvin_teleop.launch.py
+1. 是否已经调用 `/vive_marvin_teleop/set_enabled`。
+2. `/marvin/left/joint_states` 和 `/marvin/right/joint_states` 是否都有新鲜反馈。
+3. `left_chest -> tianji_left` 和 `right_chest -> tianji_right` TF 是否都存在。
+4. IK 是否报告目标超范围或关节限位。
+
+## 配置文件
+
+- `config/vive_marvin_teleop.yaml`：控制频率、反馈话题、命令话题、TF 名称、IK 分支参数、奇异容差和关节步长限制。
+- `config/static_transforms.yaml`：胸口两侧对齐和手腕 tracker 到 Tianji TCP 的变换。
+- `config/ccs_m6.MvKDCfg`：Marvin 运动学 SDK 配置。
+
+`vive_marvin_teleop.yaml` 常用参数：
+
+```text
+control_rate_hz: 60.0
+auto_enable: false
+feedback_timeout_sec: 0.5
+tf_timeout_sec: 0.5
+max_joint_step_rad: 0.02
+command_publish_on_change_only: false
 ```
 
-当前节点按双臂配置初始化，但不会因为缺少左手腕 Tracker 退出。如果只连接
-`chest` 和 `right_wrist`，并且左右 Marvin feedback 都在线，enable 后左臂会因为
-找不到 `left_chest -> tianji_left` TF 而跳过命令，右臂会继续按
-`right_chest -> tianji_right` 解 IK 并发布 `/marvin/right/joint_commands`。如果左臂
-feedback 本身也没有启动，当前 enable 服务会拒绝使能。
+`max_joint_step_rad` 限制每个控制周期发布的单关节最大变化量。早期做坐标对齐时建议保持保守。
+
+## tracker 完整性
+
+正常配置使用 `chest`、`left_wrist` 和 `right_wrist` 三个 tracker。完整机械臂遥操作时，
+缺少任意 tracker TF 都应视为故障，而不是预期运行模式。
+
+当前节点按双臂初始化，enable 时会检查左右两臂都有新鲜 feedback。如果 enable 后某一侧手腕
+TF 缺失，该侧机械臂会跳过命令并输出限频 TF warning。真实硬件继续遥操作前，应先恢复缺失的
+tracker 位姿。
+
+## 安全注意
+
+- 节点默认禁用。真实硬件保持 `auto_enable: false`。
+- enable 前一定先确认 `/marvin/*/joint_states` 存在。
+- 停止 Marvin driver 前，先通过 `/vive_marvin_teleop/set_enabled` 关闭命令输出。
+- 实机运动前先在 RViz 里验证 TF。胸口旋转或 `wrist_to_tianji` 错误会产生很大的异常笛卡尔目标。
+- 第一版现场对齐大概率需要调 `static_transforms.yaml` 里的旋转。把修正放在静态 TF 层，保持 IK 节点接口稳定。

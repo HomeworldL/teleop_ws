@@ -153,12 +153,12 @@ Using existing HMD null.Null Serial Number
 
 ## 6. 连接硬件
 
-推荐最小测试配置：
+默认机械臂遥操作测试配置：
 
 ```text
-1 x Vive Tracker
-1 x USB Watchman Dongle
-1 x Lighthouse Base Station
+3 x Vive Tracker：chest、left_wrist、right_wrist
+3 x USB Watchman Dongle：每个 tracker 一个
+1-2 x Lighthouse Base Station：优先 2 个，覆盖更稳定
 ```
 
 步骤：
@@ -217,11 +217,14 @@ source ./install/local_setup.zsh
 ros2 run vive_openvr list_trackers --all
 ```
 
-正常能看到 null HMD 和 tracker：
+正常能看到 null HMD、三个 `GenericTracker` 和 Lighthouse：
 
 ```text
 index=0  class=HMD             serial=Null Serial Number connected=True  valid=True  result=200 Running_OK xyz=[0.000, 0.000, 0.000]
 index=1  class=GenericTracker  serial=LHR-E651F39A      connected=True  valid=True  result=200 Running_OK xyz=[...]
+index=2  class=GenericTracker  serial=LHR-F757F16E      connected=True  valid=True  result=200 Running_OK xyz=[...]
+index=3  class=GenericTracker  serial=LHR-F854821A      connected=True  valid=True  result=200 Running_OK xyz=[...]
+index=4  class=TrackingReference serial=LHB-...         connected=True  valid=True  result=200 Running_OK xyz=[...]
 ```
 
 只列 tracker：
@@ -250,8 +253,8 @@ nano src/teleop_device/vive_openvr/config/vive_openvr.yaml
 ```yaml
 tracker_serials:
   left_wrist: "LHR-E651F39A"
-  right_wrist: ""
-  # chest: ""
+  right_wrist: "LHR-F757F16E"
+  chest: "LHR-F854821A"
 ```
 
 重新构建安装配置：
@@ -286,14 +289,18 @@ ros2 launch vive_openvr vive_openvr.launch.py rviz:=true
 
 ```bash
 ros2 topic list
+ros2 topic hz /vive/chest/pose
 ros2 topic hz /vive/left_wrist/pose
-ros2 topic echo /vive/left_wrist/pose
+ros2 topic hz /vive/right_wrist/pose
+ros2 topic echo --once /vive/chest/pose
 ```
 
 检查 TF：
 
 ```bash
+ros2 run tf2_ros tf2_echo vive_world vive/chest
 ros2 run tf2_ros tf2_echo vive_world vive/left_wrist
+ros2 run tf2_ros tf2_echo vive_world vive/right_wrist
 ```
 
 RViz preset 默认：
@@ -396,9 +403,9 @@ SwSyncDetect Restart
 
 通常表示 tracker 没有稳定收到 Lighthouse 光学扫描。
 
-## 13. 后续多 tracker
+## 13. 多 tracker 注意事项
 
-一次连接多个 tracker 时：
+当前默认使用 `chest`、`left_wrist` 和 `right_wrist` 三个 tracker。连接时：
 
 - 每个 tracker 推荐一个 dongle。
 - 先逐个配对，确认每个都能 `valid=True result=200`。
@@ -409,8 +416,9 @@ SwSyncDetect Restart
     chest: "LHR-..."
     left_wrist: "LHR-..."
     right_wrist: "LHR-..."
-    left_arm: "LHR-..."
-    right_arm: "LHR-..."
+    # left_arm: "LHR-..."
+    # right_arm: "LHR-..."
   ```
 
 启动一个 `vive_openvr_node` 即可管理所有 tracker，不需要每个 tracker 启一个节点。
+`left_arm` 和 `right_arm` 是后续上臂方向辅助 IK 的可选扩展，不是当前默认要求。

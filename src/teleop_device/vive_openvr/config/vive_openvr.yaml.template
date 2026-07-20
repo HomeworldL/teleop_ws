@@ -3,13 +3,12 @@
 # Fill serial numbers from:
 #   ros2 run vive_openvr list_trackers
 #
-# Roles are arbitrary labels consumed by later teleop algorithms. The first
-# Marvin teleop algorithm can use only left_wrist and right_wrist. Add chest
-# later when switching from incremental control to body-frame control.
+# Roles are labels consumed by later teleop algorithms. The default Marvin arm
+# teleoperation setup uses three trackers: chest, left_wrist, and right_wrist.
 tracker_serials:
   left_wrist: ""
   right_wrist: ""
-  # chest: ""
+  chest: ""
   # left_arm: ""
   # right_arm: ""
 

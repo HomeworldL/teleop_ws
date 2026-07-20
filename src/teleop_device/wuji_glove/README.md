@@ -86,6 +86,19 @@ filled; orientation is identity.
 - Calibrate with Wuji Studio first, then close Wuji Studio before launching ROS.
 - Close Wuji Studio and stop glove/hand/teleop nodes before running
   `wuji_glove_verify`, because the check needs exclusive access to the glove.
+- `ping 192.168.1.100` or `ping 192.168.1.101` only proves IP reachability. The
+  SDK still connects by device identity, so `left_serial` and `right_serial` in
+  `config/wuji_glove.yaml` must match the real glove serial numbers reported by
+  `wuji_glove_scan`.
+- If the launch log shows the correct glove IP and serial but reports
+  `Device not found`, first check the configured serial, then close other Wuji
+  SDK clients and rerun `wuji_glove_verify`.
 - If scanning works but connection times out on a multi-NIC host, add per-glove
   `/32` routes to the NIC that can ping the glove IP.
 - The Python package `wuji_sdk` must be installed in the active environment.
+- `config/wuji_glove.yaml` is the local runtime file created from the template.
+  Keep per-machine glove serials and network settings out of shared source
+  changes unless the whole team agrees to standardize them.
+- This package publishes keypoints only. It never publishes
+  `/hand_*/joint_commands`; hand motion commands are produced by
+  `wujihand_teleop`.

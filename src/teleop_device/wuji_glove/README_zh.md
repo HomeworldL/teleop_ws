@@ -84,6 +84,15 @@ orientation 固定为单位四元数。
 - 先用 Wuji Studio 完成校准，启动 ROS 前关闭 Wuji Studio。
 - 运行 `wuji_glove_verify` 前关闭 Wuji Studio，并停止 glove/hand/teleop 节点，
   因为这个检查需要独占连接手套。
+- `ping 192.168.1.100` 或 `ping 192.168.1.101` 只能说明 IP 可达。SDK 连接仍然按
+  设备身份匹配，因此 `config/wuji_glove.yaml` 里的 `left_serial` 和 `right_serial`
+  必须和 `wuji_glove_scan` 输出的真实手套序列号一致。
+- 如果 launch 日志里能看到正确 IP 和 serial，但报 `Device not found`，先检查配置里的
+  serial，再关闭其他 Wuji SDK 客户端并重新运行 `wuji_glove_verify`。
 - 如果能 scan 但 connect timeout，多半是多网卡同网段路由问题，需要给手套 IP
   添加指向正确网卡的 `/32` 路由。
 - 当前 Python 环境需要安装 `wuji_sdk`。
+- `config/wuji_glove.yaml` 是从模板复制出来的本机运行配置。每台机器的手套序列号和网络设置
+  不一定一样，除非团队明确约定，否则不要把本机配置当作通用配置提交。
+- 这个包只发布 keypoints，不发布 `/hand_*/joint_commands`；手部运动命令由
+  `wujihand_teleop` 产生。

@@ -16,6 +16,11 @@ install(TARGETS marvin_zero_position_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
+install(PROGRAMS
+  scripts/marvin_joint_control_ui.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 install(DIRECTORY launch config
   DESTINATION share/${PROJECT_NAME}
 )

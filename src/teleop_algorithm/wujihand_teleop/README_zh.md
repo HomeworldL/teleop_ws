@@ -3,6 +3,51 @@
 `wujihand_teleop` 只做 Wuji Glove 关键点到 Wuji Hand 关节命令的重定向。
 它不连接手套，也不连接无极手本体。
 
+## Python 环境
+
+这个包依赖 Python IK/优化库。ROS 工作区构建仍然使用系统 ROS 环境；启动 retarget 节点时
+使用独立 Miniconda 运行环境。
+
+ROS 2 Humble + Ubuntu 22.04 当前建议：
+
+```bash
+conda create -n teleop python=3.10
+conda activate teleop
+
+# 先从 conda-forge 安装 Pinocchio。不要在这一步之前先装不匹配的 pip pinocchio/pin。
+conda install -c conda-forge pinocchio
+
+# 再用 pip 安装其他 Python 运行依赖。
+python -m pip install numpy scipy pyyaml nlopt
+
+# 从官方 GitHub 安装最新 wuji-retargeting。
+python -m pip install git+https://github.com/wuji-technology/wuji-retargeting.git
+```
+
+检查运行环境：
+
+```bash
+python - <<'PY'
+import pinocchio
+import nlopt
+import numpy
+from wuji_retargeting import Retargeter
+print("wujihand teleop Python environment OK")
+PY
+```
+
+启动时在该环境里 source ROS 和当前工作区：
+
+```bash
+conda activate teleop
+source /opt/ros/humble/setup.bash
+source /home/ccs/ros2/teleop_ws/install/setup.bash
+ros2 launch wujihand_teleop wujihand_retarget.launch.py
+```
+
+launch 文件会把当前 `CONDA_PREFIX` 的 site-packages 和 cmeel library path 加到 retarget
+进程环境里。当前工作区采用 bare-metal ROS 加 conda 运行环境，不走上游 Docker 流程。
+
 ## 数据流
 
 ```text
@@ -117,6 +162,19 @@ ros2 topic hz /hand_left/joint_states
 ros2 topic hz /hand_left/joint_commands
 ros2 topic echo /wujihand_teleop/left/diagnostics
 ```
+
+## 运行注意
+
+- 这个包不会启动 `wuji_glove`、`wujihand_driver` 或 `robot_bringup`。输入设备和机器人侧
+  driver 需要分开启动。
+- 默认 `require_feedback:=true` 时，只有对应 `/hand_*/joint_states` 有新鲜反馈才会发布
+  命令。dummy 测试时先启动 `robot_bringup bringup_dummy.launch.py`，让反馈门控能够打开。
+- 如果 keypoints 超过 `input_timeout` 没有更新，命令输出会停止。这是预期行为，避免旧手势
+  持续驱动灵巧手。
+- 调 retarget 参数时可以使用 `dry_run:=true`。诊断仍会发布，但 `/hand_*/joint_commands`
+  不会输出。
+- 节点发布的是 retargeting URDF 和 hand driver 使用的 Wuji Hand 关节名。如果命令消息存在但
+  手不动，先检查 driver 的 side namespace 是否是预期的 `/hand_left` 或 `/hand_right`。
 
 ## 依赖
 

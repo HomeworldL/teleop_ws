@@ -31,6 +31,47 @@ Not migrated yet:
 Those are left out of the first driver because the current goal is teleoperation and basic
 device validation.
 
+Manual operator tools, such as `marvin_joint_control_ui.py`, live in
+`marvin_bringup` because they only use ROS topics and do not link the SDK.
+
+## Topic Layout
+
+Launch files put the node in the `marvin` namespace by default.
+
+Published feedback:
+
+```text
+/marvin/left/joint_states
+/marvin/right/joint_states
+```
+
+Command topics:
+
+```text
+/marvin/left/joint_commands
+/marvin/right/joint_commands
+```
+
+Both command and feedback messages use `sensor_msgs/msg/JointState`.
+ROS-side positions and velocities are radians/radians per second. The driver
+converts to and from the SDK degree-based API internally.
+
+The driver intentionally does not publish global `/joint_states`. The
+whole-robot aggregator in `robot_bringup` owns that stream.
+
+## Joint Names
+
+The default joint names match the Marvin URDF:
+
+```text
+Joint1_L ... Joint7_L
+Joint1_R ... Joint7_R
+```
+
+If a command message has an empty `name` field, the first seven positions are
+interpreted in this order. If names are present, all configured joint names for
+that arm must be present.
+
 ## Control Modes
 
 The driver supports three launch-time modes:
@@ -100,3 +141,31 @@ directly:
 ros2 run marvin_driver marvin_link_check_node --ros-args -p robot_ip:=192.168.1.190
 ros2 run marvin_driver marvin_cmd_delay_check_node --ros-args -p robot_ip:=192.168.1.190 -p arm:=A
 ```
+
+## Services
+
+With the default namespace:
+
+```text
+/marvin/connect
+/marvin/release
+/marvin/estop
+/marvin/left/disable
+/marvin/right/disable
+```
+
+All services currently use `std_srvs/srv/Trigger`.
+
+## Teleoperation Notes
+
+- For Vive arm teleoperation, currently prefer the
+  `marvin_impedance.launch.py` bringup path so command streaming runs through
+  explicit joint impedance mode.
+- Keep SDK ownership exclusive. Do not run MarvinPlatform, SDK demos, check
+  nodes, or another `marvin_driver_node` while this driver is connected.
+- The driver publishes feedback on `/marvin/left/joint_states` and
+  `/marvin/right/joint_states`; it does not own the global `/joint_states`
+  stream.
+- Teleoperation algorithms must wait for fresh feedback and initialize their
+  first command from the measured arm state. Publishing a target before feedback
+  is available is a control-layer bug.

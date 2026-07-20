@@ -78,3 +78,23 @@ Disable real hand drivers when testing arms only:
 ```bash
 ros2 launch robot_bringup bringup_real.launch.py hands:=false
 ```
+
+## Runtime Notes
+
+- `robot_bringup` does not launch teleoperation input packages or algorithms.
+  Start `wuji_glove`, `vive_openvr`, `wujihand_teleop`, and
+  `vive_marvin_teleop` in separate terminals when teleoperation is needed.
+- The global `/joint_states` stream is for `robot_state_publisher` and RViz.
+  Low-level drivers and teleoperation algorithms should use device-scoped topics
+  such as `/marvin/right/joint_states` and `/hand_right/joint_commands`.
+- Dummy bringup mirrors command topics into feedback topics. This is useful for
+  visualization and topic-chain checks, but it does not validate real motor
+  mode, controller limits, or hardware timing.
+- Real bringup defaults to Marvin position mode. For Vive arm teleoperation,
+  currently prefer `marvin_launch:=marvin_impedance.launch.py`.
+- For arm-only testing on real hardware, use `hands:=false` so the Wuji hand
+  drivers are not started. For hand-only testing, keep arm teleoperation
+  disabled and ignore `/marvin/*` command topics.
+- If RViz does not move, check the per-device feedback first, then check
+  `/joint_states`. Missing device feedback leaves that part of the composed
+  model at zero.

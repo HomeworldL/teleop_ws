@@ -12,19 +12,19 @@ vive_world
 ```
 
 这表示 SteamVR standing tracking space，不是 Marvin `base_link`，也不是人的腰/胸/头。
-如果只使用左右手腕 tracker，后续遥操作算法通常应先做增量式接管；如果要做人体系绝对映射，
-建议再加 `chest` tracker，并在算法包中计算：
+当前默认机械臂遥操作配置使用三个 tracker：`chest`、`left_wrist` 和 `right_wrist`。
+后续算法用胸口 tracker 作为人体参考，并计算每个手腕相对胸口的位姿：
 
 ```text
 T_chest_wrist = inverse(T_vive_world_chest) * T_vive_world_wrist
 ```
 
-默认 TF：
+三 tracker 默认 TF：
 
 ```text
 vive_world -> vive/left_wrist
 vive_world -> vive/right_wrist
-vive_world -> vive/chest       # 配置后发布
+vive_world -> vive/chest
 vive_world -> vive/left_arm    # 配置后发布
 vive_world -> vive/right_arm   # 配置后发布
 ```
@@ -58,19 +58,13 @@ vive_world -> vive/right_arm   # 配置后发布
 
 ## 硬件准备
 
-最小调试配置：
-
-```text
-2 x Vive Tracker        左右手腕
-2 x USB Dongle          每个 tracker 一个接收器
-1-2 x Lighthouse        推荐 2 个，覆盖更稳定
-1 x PC                  安装 Steam + SteamVR
-```
-
-推荐后续人体参考系配置：
+默认机械臂遥操作配置：
 
 ```text
 3 x Vive Tracker        chest + left_wrist + right_wrist
+3 x USB Dongle          每个 tracker 一个接收器
+1-2 x Lighthouse        优先 2 个，覆盖更稳定
+1 x PC                  安装 Steam + SteamVR
 ```
 
 如果要使用上臂方向辅助 IK，可再增加：
@@ -189,10 +183,13 @@ ros2 run vive_openvr list_trackers
 ```text
 index=3  class=GenericTracker    serial=LHR-XXXXXXXX connected=True valid=True result=200 Running_OK xyz=[0.123, 1.234, -0.456]
 index=4  class=GenericTracker    serial=LHR-YYYYYYYY connected=True valid=False result=101 Calibrating_OutOfRange xyz=n/a
+index=5  class=TrackingReference serial=LHB-ZZZZZZZZ connected=True valid=True result=200 Running_OK xyz=[0.000, 0.000, 0.000]
 ```
 
 只有 `valid=True` 且 `result=200 Running_OK` 时，`vive_openvr_node` 才会发布对应 pose。
 `connected=True` 只表示 tracker 无线连接成功，不代表 Lighthouse 定位已经有效。
+`GenericTracker` 才是 Vive Tracker；`TrackingReference` 是 Lighthouse 基站，不要把
+`LHB-...` serial 填到 `left_wrist`、`right_wrist` 或 `chest`。
 
 复制模板并填入 serial：
 
@@ -207,7 +204,7 @@ cp src/teleop_device/vive_openvr/config/vive_openvr.yaml.template \
 tracker_serials:
   left_wrist: "LHR-XXXXXXXX"
   right_wrist: "LHR-YYYYYYYY"
-  # chest: "LHR-ZZZZZZZZ"
+  chest: "LHR-ZZZZZZZZ"
 ```
 
 重新构建安装配置：
@@ -241,6 +238,7 @@ ros2 launch vive_openvr vive_openvr.launch.py rviz:=true
 检查 TF：
 
 ```bash
+ros2 run tf2_ros tf2_echo vive_world vive/chest
 ros2 run tf2_ros tf2_echo vive_world vive/left_wrist
 ros2 run tf2_ros tf2_echo vive_world vive/right_wrist
 ```
@@ -248,8 +246,10 @@ ros2 run tf2_ros tf2_echo vive_world vive/right_wrist
 检查话题：
 
 ```bash
+ros2 topic hz /vive/chest/pose
 ros2 topic hz /vive/left_wrist/pose
-ros2 topic echo --once /vive/left_wrist/pose
+ros2 topic hz /vive/right_wrist/pose
+ros2 topic echo --once /vive/chest/pose
 ```
 
 RViz preset 默认使用 `vive_world` 作为 Fixed Frame，并显示 TF、
@@ -280,6 +280,10 @@ apply_role_corrections: true
 - 运行前确认操作区无遮挡，tracker 能被至少一个 Lighthouse 看到。
 - 基站通电后不要移动；移动后 SteamVR tracking space 可能变化，需要重新标定。
 - 每个 tracker 推荐独立 dongle，dongle 之间尽量拉开距离，减少 USB/2.4GHz 干扰。
+- tracker 绿灯只表示无线链路/配对状态正常，不等于位姿可用；以 `list_trackers --all`
+  里的 `valid=True` 和 `result=200 Running_OK` 为准。
+- 一次连接多个 tracker 时，逐个开机、逐个配对、逐个记录 `LHR-...` serial，并在配置中
+  固定角色。后续不要按 SteamVR index 写逻辑，因为 index 会随启动顺序变化。
 - 先验证 `list_trackers` 能看到 serial，再启动 ROS 节点。
 - 遥操作机械臂前，先只看 TF/Pose 是否稳定，不要直接把 tracker 位姿送入硬件。
 - 如果 SteamVR 无法启动，先确认桌面会话类型：
@@ -310,6 +314,22 @@ python3 -m pip install openvr
 - serial 填错。
 - dongle 未插入或被其他设备占用。
 - tracker 不在 Lighthouse 覆盖范围内。
+
+`connected=True` 但没有 pose：
+
+- 继续看 `valid` 和 `result`。只有 `valid=True`、`result=200 Running_OK` 才会发布。
+- `Calibrating_OutOfRange` 或 `Running_OutOfRange` 通常是距离、遮挡、反光或基站角度问题。
+- 如果 tracker 刚开机，SteamVR 可能需要几秒完成定位；期间 ROS topic 不会有数据。
+
+`connected=False result=1 Uninitialized`：
+
+- 这是 SteamVR 记住了某个 `GenericTracker`，但它当前没有活跃连接或有效位姿。
+- 检查 tracker 是否开机、是否休眠、是否配对到当前 dongle、dongle 是否插在当前主机上。
+
+看到 `TrackingReference`：
+
+- 这是 Lighthouse 基站，不是手腕或胸口 tracker。
+- 它出现是正常的；配置 tracker serial 时只使用 `GenericTracker` 的 `LHR-...`。
 
 Pose 间歇丢失：
 

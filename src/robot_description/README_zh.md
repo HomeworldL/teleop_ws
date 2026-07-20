@@ -7,6 +7,15 @@
 
 组合机器人定义在 `urdf/robot.xacro` 中，并展开生成 `urdf/robot.urdf`。
 
+`robot_description` 是当前工作区的主要描述入口。它把 `src/` 下的资源包组合成最终整机模型：
+
+- `marvin_description`：Marvin M6-S 左右机械臂 URDF 和 mesh。
+- `wuji_description`：Wuji 左右手 URDF、mesh 和手部 MJCF 资源。
+- `realsense2_description`：RealSense 相机 xacro 模型和 mesh。
+
+最终包会加入共享底座、升降平台、手部转接件、相机转接件、展开后的 URDF、RViz 配置和 MuJoCo
+场景。
+
 配置如下：
 
 - 底座：`base_link` 车体和固定的 `lift_platform_link`。
@@ -44,6 +53,12 @@
 ROS optical frame 使用标准相机约定：`+X` 向右、`+Y` 向下、`+Z` 向前。MuJoCo XML 中，
 相机会挂在对应的 `*_color_optical_frame` 下，并旋转回 OpenGL/MuJoCo 相机约定，
 即 `+Z` 指向后方。
+
+Vive 到 Marvin 的机械臂遥操作节点不会直接把这些 URDF link 当成 IK 目标接口。
+`vive_marvin_teleop` 送入 Marvin SDK IK wrapper 的是 `left_chest -> tianji_left` 和
+`right_chest -> tianji_right`。这些 `tianji_*` frame 遵循 SDK TCP/法兰约定，不是
+`left_palm_link` 或 `right_palm_link`。URDF link 主要用于可视化和标定参考；tracker 到
+TCP 的对齐应在 `vive_marvin_teleop/config/static_transforms.yaml` 中调整。
 
 ## 视觉
 
@@ -91,8 +106,22 @@ zsh 环境：
 source install/setup.zsh
 ```
 
+从 xacro 重新生成展开后的 URDF：
+
+```bash
+xacro src/robot_description/urdf/robot.xacro > src/robot_description/urdf/robot.urdf
+```
+
 运行 MuJoCo 场景：
 
 ```bash
 conda run -n floating python src/robot_description/mjcf/scene.py
+```
+
+只渲染指定相机：
+
+```bash
+conda run -n floating python src/robot_description/mjcf/scene.py \
+  --camera head_camera \
+  --camera left_wrist_camera
 ```
