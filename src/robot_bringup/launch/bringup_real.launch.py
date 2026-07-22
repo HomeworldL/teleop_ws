@@ -32,6 +32,7 @@ def marvin_bringup_include() -> IncludeLaunchDescription:
             "auto_connect": LaunchConfiguration("auto_connect"),
             "velocity_ratio": LaunchConfiguration("velocity_ratio"),
             "acceleration_ratio": LaunchConfiguration("acceleration_ratio"),
+            "feedback_rate_hz": LaunchConfiguration("marvin_feedback_rate_hz"),
         }.items(),
     )
 
@@ -75,6 +76,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("auto_connect", default_value="true"),
             DeclareLaunchArgument("velocity_ratio", default_value="10"),
             DeclareLaunchArgument("acceleration_ratio", default_value="10"),
+            DeclareLaunchArgument("marvin_feedback_rate_hz", default_value="1000.0"),
             DeclareLaunchArgument("hand_publish_rate", default_value="1000.0"),
             DeclareLaunchArgument("hand_filter_cutoff_freq", default_value="10.0"),
             DeclareLaunchArgument("hand_diagnostics_rate", default_value="10.0"),

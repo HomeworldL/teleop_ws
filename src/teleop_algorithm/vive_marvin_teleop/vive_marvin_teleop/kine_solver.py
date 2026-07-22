@@ -44,6 +44,7 @@ class MarvinIkSolver:
             pnva=config["PNVA"][0],
             j67=config["BD"][0],
         )
+        self._set_identity_tool(self._left, robot_serial=0)
         self._right = Marvin_Kine()
         self._right.initial_kine(
             robot_serial=1,
@@ -52,6 +53,18 @@ class MarvinIkSolver:
             pnva=config["PNVA"][1],
             j67=config["BD"][1],
         )
+        self._set_identity_tool(self._right, robot_serial=1)
+
+    @staticmethod
+    def _set_identity_tool(kine: Marvin_Kine, robot_serial: int) -> None:
+        identity = [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+        if kine.set_tool_kine(robot_serial, identity) is False:
+            raise RuntimeError(f"Failed to set identity tool kinematics for robot_serial={robot_serial}")
 
     def solve(
         self,

@@ -41,7 +41,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("rviz", default_value="true"),
             DeclareLaunchArgument("publish_rate_hz", default_value="50.0"),
             DeclareLaunchArgument("stale_timeout_sec", default_value="0.0"),
-            DeclareLaunchArgument("dummy_publish_rate_hz", default_value="100.0"),
+            DeclareLaunchArgument("dummy_publish_rate_hz", default_value="1000.0"),
             DeclareLaunchArgument("arms", default_value="both"),
             DeclareLaunchArgument("hands", default_value="both"),
             OpaqueFunction(function=launch_setup),

@@ -23,6 +23,7 @@ def generate_launch_description():
             DeclareLaunchArgument("auto_connect", default_value="true"),
             DeclareLaunchArgument("velocity_ratio", default_value="10"),
             DeclareLaunchArgument("acceleration_ratio", default_value="10"),
+            DeclareLaunchArgument("feedback_rate_hz", default_value="1000.0"),
             Node(
                 package="marvin_driver",
                 executable="marvin_driver_node",
@@ -43,6 +44,9 @@ def generate_launch_description():
                         ),
                         "acceleration_ratio": ParameterValue(
                             LaunchConfiguration("acceleration_ratio"), value_type=int
+                        ),
+                        "feedback_rate_hz": ParameterValue(
+                            LaunchConfiguration("feedback_rate_hz"), value_type=float
                         ),
                     },
                 ],
